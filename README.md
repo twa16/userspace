@@ -1,4 +1,5 @@
 # Userspace
+
 ###What is Userspace?
 Userspace is a project that was envisioned by Manuel Gauto 
 in 2014 during a meeting of George Mason University's Student Run Computing and Technology (http://srct.gmu.edu).
@@ -7,6 +8,7 @@ scratch work on for their project. The original project called for VMs but not t
 matured, it is a much better fit.
 
 ###Goals
+
 - SSH Access into Spaces
 - Limited Lifetime
   * Pauses container on inactivity
