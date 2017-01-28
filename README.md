@@ -26,3 +26,7 @@ Web Interface --> UserSpace Daemon --> Docker Hosts
 
 The Userspace Daemon will connect to one or more Docker hosts and manage the containers
 on there. The Daemon will expose the various functions of the system over a REST API. 
+
+### API
+The API is under active development. 
+You can see the documentation here: https://userspace.restlet.io
