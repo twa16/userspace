@@ -83,7 +83,7 @@ type DockerInstance struct {
 	Endpoint       string `json:"sock_path"`          //Path to the sock if the connection type is local or remote address if the type is tls
 	CaCertPath     string `json:"ca_cert_path"`       //Path to the CA certificate if the connection type is tls
 	ClientCertPath string `json:"client_cert_path"`   //Path to the Client certificate if the connection type is tls
-	ClientKeyPath  string `json:"client_key_path`     //Path to the Client key if the connection type is tls
+	ClientKeyPath  string `json:"client_key_path"`     //Path to the Client key if the connection type is tls
 	IsConnected    bool   `json:"is_connected"`       //This is true if the daemon is reporting it is connected to the Docker host
 	DockerClient   *docker.Client `gorm:"-" json:"-"` //Connection to the Docker instance
 }
@@ -104,7 +104,7 @@ func main() {
 //All code that would normally be in main() is put here in case we want to separate this into another package so it can be used as a library
 func Init() {
 	initLogging()
-	log.Infof("Userspace Version: %s\nManuel Gauto(github.com/twa16)\n", VERSION)
+	log.Infof("\nUserspace Version: %s\nManuel Gauto(github.com/twa16)\n", VERSION)
 
 	//Load the Configuration
 	loadConfig()
@@ -125,6 +125,7 @@ func Init() {
 	db.AutoMigrate(&SpaceImage{})
 	db.AutoMigrate(&SpaceUsageReport{})
 	db.AutoMigrate(&User{})
+	db.AutoMigrate(&DockerInstance{})
 	log.Info("Migration Complete.")
 
 	initDockerHosts(db)

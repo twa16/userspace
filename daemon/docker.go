@@ -10,14 +10,14 @@ var DockerInstances []*DockerInstance
 
 func initDockerHosts(db *gorm.DB) {
 	instances := getAllDockerInstanceConfigurations(db)
-	log.Info("Initiating Connections to %d Docker Host(s)", len(instances))
+	log.Infof("Initiating Connections to %d Docker Host(s)\n", len(instances))
 	for _, instance := range instances {
 		_, err := addAndConnectToDockerInstance(db, &instance)
 		if err != nil {
 			log.Critical("Adding Docker Host %s Failed: %s\n", instance.Name, err.Error())
 			continue
 		}
-		log.Info("Connected to Docker Host: %s\n", instance.Name)
+		log.Infof("Connected to Docker Host: %s\n", instance.Name)
 	}
 	log.Info("Initialized All Docker Hosts!")
 }
@@ -34,7 +34,7 @@ func addAndConnectToDockerInstance(db *gorm.DB, instance *DockerInstance) (*Dock
 
 func getAllDockerInstanceConfigurations(db *gorm.DB) []DockerInstance {
 	configs := []DockerInstance{}
-	db.Find(configs)
+	db.Find(&configs)
 	return configs
 }
 
