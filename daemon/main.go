@@ -127,6 +127,7 @@ func Init() {
 	db.AutoMigrate(&User{})
 	log.Info("Migration Complete.")
 
+	initDockerHosts(db)
 }
 
 func initLogging() {
