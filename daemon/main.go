@@ -8,6 +8,7 @@ import (
 	"github.com/op/go-logging"
 	"os"
 	"github.com/spf13/viper"
+	"github.com/fsouza/go-dockerclient"
 )
 
 //This is where I found the bug with Gogland haha (GO-3377)
@@ -74,15 +75,17 @@ type User struct {
 
 //DockerInstance Struct representing a docker instance to use for containers
 type DockerInstance struct {
-	ID             uint `gorm:"primary_key"`        //Primary Key
-	CreatedAt      time.Time `json:"-"`             //Creation Time
-	UpdatedAt      time.Time `json:"-"`             //Last Update time
-	Name           string `json:"name"`             //Friendly name of this docker instance
-	ConnectionType string `json:"connection_type"`  //Type of connection to use when connecting a docker instance (local,tls)
-	SockPath       string `json:"sock_path"`        //Path to the sock if the connection type is local
-	CaCertPath     string `json:"ca_cert_path"`     //Path to the CA certificate if the connection type is tls
-	ClientCertPath string `json:"client_cert_path"` //Path to the Client certificate if the connection type is tls
-	ClientKeyPath  string `json:"client_key_path`   //Path to the Client key if the connection type is tls
+	ID             uint `gorm:"primary_key"`          //Primary Key
+	CreatedAt      time.Time `json:"-"`               //Creation Time
+	UpdatedAt      time.Time `json:"-"`               //Last Update time
+	Name           string `json:"name"`               //Friendly name of this docker instance
+	ConnectionType string `json:"connection_type"`    //Type of connection to use when connecting a docker instance (local,tls)
+	Endpoint       string `json:"sock_path"`          //Path to the sock if the connection type is local or remote address if the type is tls
+	CaCertPath     string `json:"ca_cert_path"`       //Path to the CA certificate if the connection type is tls
+	ClientCertPath string `json:"client_cert_path"`   //Path to the Client certificate if the connection type is tls
+	ClientKeyPath  string `json:"client_key_path`     //Path to the Client key if the connection type is tls
+	IsConnected    bool   `json:"is_connected"`       //This is true if the daemon is reporting it is connected to the Docker host
+	DockerClient   *docker.Client `gorm:"-" json:"-"` //Connection to the Docker instance
 }
 
 //endregion
@@ -95,6 +98,11 @@ var VERSION = "0.1A"
 var log = logging.MustGetLogger("userspace-daemon")
 
 func main() {
+	Init()
+}
+
+//All code that would normally be in main() is put here in case we want to separate this into another package so it can be used as a library
+func Init() {
 	initLogging()
 	log.Infof("Userspace Version: %s\nManuel Gauto(github.com/twa16)\n", VERSION)
 
