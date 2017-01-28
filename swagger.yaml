@@ -1,0 +1,299 @@
+---
+swagger: "2.0"
+info:
+  description: "API definition for the Userspace Rest API"
+  version: "1.0.0"
+  title: "UserSpace"
+  contact: {}
+paths:
+  /api/v1/hosts:
+    get:
+      summary: "Get all Hosts"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "X-Auth-Token"
+        in: "header"
+        required: true
+        type: "string"
+      responses:
+        200:
+          description: "Status 200"
+          schema:
+            type: "array"
+            items:
+              $ref: "#/definitions/DockerInstance"
+        401:
+          description: "Returned when the lists user does not have access to this\
+            \ data"
+    post:
+      summary: "Create Host"
+      consumes:
+      - "application/json"
+      parameters:
+      - in: "body"
+        name: "body"
+        required: false
+        schema:
+          $ref: "#/definitions/DockerInstance"
+      responses:
+        200:
+          description: "Status 200"
+  /api/v1/space:
+    get:
+      summary: "Retrieve a Space"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "space_id"
+        in: "query"
+        description: "ID of the space that is to be retrieved."
+        required: true
+        type: "string"
+      - name: "X-Auth-Token"
+        in: "header"
+        description: "Authorization token for a user"
+        required: true
+        type: "string"
+      responses:
+        200:
+          description: "If the Space exists and the user has access, the space is\
+            \ returned."
+          schema:
+            $ref: "#/definitions/Space"
+        400:
+          description: "Returned if the request was invalid."
+        401:
+          description: "Returned if the authentication token is missing or invalid."
+        404:
+          description: "This is returned if the user requests a container that does\
+            \ not exist or if the user does not have access to the space."
+    post:
+      summary: "Create a Space"
+      parameters:
+      - name: "X-Auth-Token"
+        in: "header"
+        description: "Authentication token of a User"
+        required: true
+        type: "string"
+      responses:
+        200:
+          description: "Status 200"
+definitions:
+  Space:
+    type: "object"
+    required:
+    - "archived"
+    - "creation_date"
+    - "host_id"
+    - "image_id"
+    - "owner_id"
+    - "space_id"
+    - "ssh_address"
+    - "ssh_port"
+    properties:
+      space_id:
+        type: "string"
+        description: "Unique ID of the Space"
+      host_id:
+        type: "integer"
+        format: "int32"
+        description: "ID of the host that is running this space"
+      owner_id:
+        type: "string"
+        description: "Unique ID of the user that owns the Space. This is a link to\
+          \ User."
+      image_id:
+        type: "string"
+        description: "This is the image that is used by the container that contains\
+          \ the space. This is a link to SpaceImage."
+      creation_date:
+        type: "string"
+        format: "date"
+        description: "Timestamp representing the instance in time that the space was\
+          \ created."
+      archived:
+        type: "boolean"
+        description: "This value is true if the space was deleted as a result of inactivity.\
+          \ All data is lost but metadata is preserved."
+        default: false
+      last_ssh_access:
+        type: "string"
+        format: "date"
+        description: "The time this space was last accessed over SSH. This may be\
+          \ empty if the space was never accessed."
+      last_net_access:
+        type: "string"
+        description: "The time this space was last accessed over the network but not\
+          \ SSH. This may be empty if the space was never accessed."
+      ssh_address:
+        type: "string"
+        description: "Address that should be used to SSH into the Space."
+      ssh_port:
+        type: "string"
+        description: "Port that should be used to SSH into the Space."
+      archive_date:
+        type: "string"
+        format: "date"
+        description: "This is the timestamp of when the space was archived. This is\
+          \ set if the space was archived."
+    description: "Represents a Space on the system."
+  User:
+    type: "object"
+    required:
+    - "externally_authentication"
+    - "user_id"
+    properties:
+      user_id:
+        type: "string"
+        description: "Unique ID of the user"
+      externally_authentication:
+        type: "boolean"
+        description: "If true, this user is authenticated against an external service\
+          \ which means there will be an authentication_backend_link but not a password."
+        default: false
+      authentication_backend_link:
+        type: "string"
+        description: "This is the field that links the user to the backend authentication\
+          \ service. In the initial system this stores the \"netid\" of the user that\
+          \ is used by CAS and LDAP."
+      password:
+        type: "string"
+        description: "BCrypt hash of the user password. This is only set if the user\
+          \ is not externally authenticated."
+      last_login_timestamp:
+        type: "string"
+        format: "date"
+        description: "The last time the user logged in. This is blank if the user\
+          \ has never logged in."
+    description: "User Object"
+  SpaceImage:
+    type: "object"
+    required:
+    - "active"
+    - "description"
+    - "docker_image"
+    - "image_id"
+    - "name"
+    properties:
+      image_id:
+        type: "string"
+        description: "Unique ID of the image"
+      name:
+        type: "string"
+        description: "Friendly name of this image."
+      description:
+        type: "string"
+        description: "Friendly description of this image."
+      docker_image:
+        type: "string"
+        description: "This is the full URI of the docker image."
+      active:
+        type: "boolean"
+        description: "If this is set to false, the user cannot use the image and is\
+          \ only kept to avoid breaking older spaces."
+        default: false
+  SpaceUsageReport:
+    type: "object"
+    required:
+    - "container_id"
+    - "disk_usage_bytes"
+    - "network_in_bytes"
+    - "network_out_bytes"
+    - "report_id"
+    - "ssh_session_count"
+    - "timestamp"
+    properties:
+      report_id:
+        type: "integer"
+        format: "int64"
+        description: "ID of the report"
+      container_id:
+        type: "string"
+        description: "ID of the container"
+      timestamp:
+        type: "string"
+        format: "date"
+        description: "Time this data was recorded"
+      network_in_bytes:
+        type: "integer"
+        format: "int64"
+        description: "Number of bytes that the space has received over the network.\
+          \ This does include SSH."
+      network_out_bytes:
+        type: "integer"
+        format: "int64"
+        description: "Number of bytes that the space has sent over the network. This\
+          \ includes SSH."
+      disk_usage_bytes:
+        type: "integer"
+        format: "int64"
+        description: "Number of bytes that the space is taking up on disk."
+      ssh_session_count:
+        type: "integer"
+        format: "int64"
+        description: "This is the number of SSH sessions the space has received."
+    description: "This object stores the metrics for a space at a specific point in\
+      \ time. The reports are not reset each time therefore the difference between\
+      \ two reports will show the increase in the time between the reports."
+  AuthenticationToken:
+    type: "object"
+    required:
+    - "expiration_time"
+    - "token"
+    - "user_id"
+    properties:
+      user_id:
+        type: "string"
+        description: "ID of user this token represents"
+      expiration_time:
+        type: "integer"
+        format: "int64"
+        description: "Unix time representation of when this token will be inactivated."
+      token:
+        type: "string"
+        description: "Token that is to be used in requests."
+  SpaceCreationRequest:
+    type: "object"
+    required:
+    - "image_id"
+    - "name"
+    properties:
+      image_id:
+        type: "string"
+        description: "ID of the image to be used as a basis for your space."
+      name:
+        type: "string"
+        description: "This is a friendly name of the container."
+    description: "This is the struct the represents what a user should send to the\
+      \ server to request a new space."
+  DockerInstance:
+    type: "object"
+    required:
+    - "connection_type"
+    - "endpoint"
+    - "name"
+    properties:
+      name:
+        type: "string"
+        description: "Friendly name of this docker instance"
+      connection_type:
+        type: "string"
+        description: "Type of connection to use when connecting a docker instance\
+          \ (local,tls)"
+      endpoint:
+        type: "string"
+        description: "Path to the sock if the connection type is local or remote address\
+          \ if the type is tls"
+      ca_cert_path:
+        type: "string"
+      client_cert_path:
+        type: "string"
+      client_key_path:
+        type: "string"
+      is_connected:
+        type: "boolean"
+        description: "This is true if the daemon is reporting it is connected to the\
+          \ Docker host"
+        default: false
+    description: "Struct representing a docker instance to use for containers"

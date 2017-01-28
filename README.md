@@ -32,3 +32,5 @@ on there. The Daemon will expose the various functions of the system over a REST
 ### API
 The API is under active development. 
 You can see the documentation here: https://userspace.restlet.io
+This swagger.yaml file has the most update to date version of the API. 
+The online viewer will be updated periodically.
