@@ -3,12 +3,19 @@ package main
 import (
 	"time"
 	"github.com/go-openapi/strfmt"
+	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/sqlite"
+	"github.com/op/go-logging"
+	"os"
+	"github.com/spf13/viper"
 )
 
-//Space
+//This is where I found the bug with Gogland haha (GO-3377)
+//region Model Structs
+
 type Space struct {
 	//Primary Key
-	ID 	uint `gorm:"primary_key" json:"-"`
+	ID uint `gorm:"primary_key" json:"-"`
 
 	// This is the timestamp of when the space was archived. This is set if the space was archived.
 	ArchiveDate time.Time `json:"archive_date,omitempty"`
@@ -51,7 +58,7 @@ type Space struct {
 //Authentication Token
 type AuthenticationToken struct {
 	//Primary Key
-	ID 	uint `gorm:"primary_key" json:"-"`
+	ID uint `gorm:"primary_key" json:"-"`
 
 	//Creation time
 	CreatedAt time.Time `json:"-"`
@@ -72,7 +79,7 @@ type AuthenticationToken struct {
 // SpaceImage
 type SpaceImage struct {
 	//Primary Key
-	ID 	uint `gorm:"primary_key" json:"-"`
+	ID uint `gorm:"primary_key" json:"-"`
 
 	//Creation time
 	CreatedAt time.Time `json:"-"`
@@ -101,7 +108,7 @@ type SpaceImage struct {
 // SpaceUsageReport This object stores the metrics for a space at a specific point in time. The reports are not reset each time therefore the difference between two reports will show the increase in the time between the reports.
 type SpaceUsageReport struct {
 	//Primary Key
-	ID 	uint `gorm:"primary_key" json:"-"`
+	ID uint `gorm:"primary_key" json:"-"`
 
 	//Creation time
 	CreatedAt time.Time `json:"-"`
@@ -138,7 +145,7 @@ type SpaceUsageReport struct {
 // User User Object
 type User struct {
 	//Primary Key
-	ID 	uint `gorm:"primary_key" json:"-"`
+	ID uint `gorm:"primary_key" json:"-"`
 
 	//Creation time
 	CreatedAt time.Time `json:"-"`
@@ -164,4 +171,88 @@ type User struct {
 	UserID *string `json:"user_id"`
 }
 
+//DockerInstance Struct representing a docker instance to use for containers
+type DockerInstance struct {
+	ID             uint `gorm:"primary_key"`        //Primary Key
+	CreatedAt      time.Time `json:"-"`             //Creation Time
+	UpdatedAt      time.Time `json:"-"`             //Last Update time
+	Name           string `json:"name"`             //Friendly name of this docker instance
+	ConnectionType string `json:"connection_type"`  //Type of connection to use when connecting a docker instance (local,tls)
+	SockPath       string `json:"sock_path"`        //Path to the sock if the connection type is local
+	CaCertPath     string `json:"ca_cert_path"`     //Path to the CA certificate if the connection type is tls
+	ClientCertPath string `json:"client_cert_path"` //Path to the Client certificate if the connection type is tls
+	ClientKeyPath  string `json:"client_key_path`   //Path to the Client key if the connection type is tls
+}
 
+//endregion
+
+//region Internal Structs
+
+//endregion
+
+var VERSION = "0.1A"
+var log = logging.MustGetLogger("userspace-daemon")
+
+func main() {
+	initLogging()
+	log.Infof("Userspace Version: %s\nManuel Gauto(github.com/twa16)\n", VERSION)
+
+	//Load the Configuration
+	loadConfig()
+
+	//Init DB
+	log.Info("Connecting to database...")
+	db, err := gorm.Open("sqlite3", "./dev.db")
+	defer db.Close()
+	if err != nil {
+		log.Fatalf("Failed to connect to database. Error: %s\n", err.Error())
+		os.Exit(1)
+	}
+
+	//Migrate Models
+	log.Info("Migrating Models...")
+	db.AutoMigrate(&Space{})
+	db.AutoMigrate(&AuthenticationToken{})
+	db.AutoMigrate(&SpaceImage{})
+	db.AutoMigrate(&SpaceUsageReport{})
+	db.AutoMigrate(&User{})
+	log.Info("Migration Complete.")
+
+}
+
+func initLogging() {
+
+	// Example format string. Everything except the message has a custom color
+	// which is dependent on the log level. Many fields have a custom output
+	// formatting too, eg. the time returns the hour down to the milli second.
+	var format = logging.MustStringFormatter(
+		`%{color}%{time:15:04:05.000} %{shortfunc} ▶ %{level:.4s} %{id:03x}%{color:reset} %{message}`,
+	)
+	backend := logging.NewLogBackend(os.Stderr, "", 0)
+
+	// For messages written to backend2 we want to add some additional
+	// information to the output, including the used log level and the name of
+	// the function.
+	backendFormatter := logging.NewBackendFormatter(backend, format)
+	logging.SetBackend(backendFormatter)
+}
+
+//loadConfig I bet you can guess what this function does
+func loadConfig() {
+	viper.SetConfigName("config")                // name of config file (without extension)
+	viper.AddConfigPath("./config")              // path to look for the config file in
+	viper.AddConfigPath("/etc/userspace/config") // path to look for the config file in
+	viper.AddConfigPath(".")                     // optionally look for config in the working directory
+
+	err := viper.ReadInConfig() // Find and read the config file
+	if err != nil {
+		log.Fatalf("Fatal error config file: %s \n", err) // Handle errors reading the config file
+		panic(err)
+	}
+
+	log.Infof("Using config file: %s", viper.ConfigFileUsed())
+	for _, key := range viper.AllKeys() {
+		log.Infof("Loaded: %s as %s", key, viper.GetString(key))
+	}
+	//viper.SetDefault("k", "v")
+}
