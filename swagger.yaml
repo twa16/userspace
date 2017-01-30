@@ -271,7 +271,6 @@ definitions:
     type: "object"
     required:
     - "connection_type"
-    - "endpoint"
     - "name"
     properties:
       name:
@@ -284,7 +283,7 @@ definitions:
       endpoint:
         type: "string"
         description: "Path to the sock if the connection type is local or remote address\
-          \ if the type is tls"
+          \ if the type is tls. If type is local and this is empty, env will be used."
       ca_cert_path:
         type: "string"
       client_cert_path:

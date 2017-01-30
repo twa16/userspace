@@ -96,6 +96,7 @@ type DockerInstance struct {
 
 var VERSION = "0.1A"
 var log = logging.MustGetLogger("userspace-daemon")
+var database *gorm.DB
 
 func main() {
 	Init()
@@ -112,7 +113,8 @@ func Init() {
 	//Init DB
 	log.Info("Connecting to database...")
 	db, err := gorm.Open("sqlite3", "./dev.db")
-	defer db.Close()
+	database = db
+	defer database.Close()
 	if err != nil {
 		log.Fatalf("Failed to connect to database. Error: %s\n", err.Error())
 		os.Exit(1)
@@ -120,15 +122,15 @@ func Init() {
 
 	//Migrate Models
 	log.Info("Migrating Models...")
-	db.AutoMigrate(&Space{})
-	db.AutoMigrate(&AuthenticationToken{})
-	db.AutoMigrate(&SpaceImage{})
-	db.AutoMigrate(&SpaceUsageReport{})
-	db.AutoMigrate(&User{})
-	db.AutoMigrate(&DockerInstance{})
+	database.AutoMigrate(&Space{})
+	database.AutoMigrate(&AuthenticationToken{})
+	database.AutoMigrate(&SpaceImage{})
+	database.AutoMigrate(&SpaceUsageReport{})
+	database.AutoMigrate(&User{})
+	database.AutoMigrate(&DockerInstance{})
 	log.Info("Migration Complete.")
 
-	initDockerHosts(db)
+	initDockerHosts(database)
 	startAPI()
 }
 

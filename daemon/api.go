@@ -8,6 +8,7 @@ import (
 	"fmt"
 )
 
+//postDockerHostAPIHandler Handles the requests for adding a new docker host
 func postDockerHostAPIHandler(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	var dockerHost DockerInstance
@@ -16,10 +17,14 @@ func postDockerHostAPIHandler(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 
+	//Call the connection methods
+	addAndConnectToDockerInstance(database, &dockerHost)
+
 	fmt.Fprintf(w, "OK")
 	defer r.Body.Close()
 }
 
+//pingAPIHandler Handles the ping test endpoint
 func pingAPIHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "PONG")
 }
