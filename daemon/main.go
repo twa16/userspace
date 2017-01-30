@@ -129,6 +129,7 @@ func Init() {
 	log.Info("Migration Complete.")
 
 	initDockerHosts(db)
+	startAPI()
 }
 
 func initLogging() {
