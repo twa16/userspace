@@ -94,6 +94,7 @@ type DockerInstance struct {
 
 //endregion
 
+//This should only be 4 chars or you have to change our fancy banner
 var VERSION = "0.1A"
 var log = logging.MustGetLogger("userspace-daemon")
 var database *gorm.DB
@@ -105,7 +106,12 @@ func main() {
 //All code that would normally be in main() is put here in case we want to separate this into another package so it can be used as a library
 func Init() {
 	initLogging()
-	log.Infof("\nUserspace Version: %s\nManuel Gauto(github.com/twa16)\n", VERSION)
+	log.Infof("\n" +
+		"====================================\n" +
+		"== Userspace Daemon               ==\n" +
+		"== Version: %s                  ==\n" +
+		"== Manuel Gauto(github.com/twa16) ==\n" +
+		"====================================\n", VERSION)
 
 	//Load the Configuration
 	loadConfig()
