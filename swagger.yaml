@@ -93,8 +93,7 @@ definitions:
     - "ssh_port"
     properties:
       space_id:
-        type: "integer"
-        format: "int32"
+        type: "string"
         description: "Unique ID of the Space"
       owner_id:
         type: "string"
@@ -137,6 +136,9 @@ definitions:
       space_state:
         type: "string"
         description: "Running State of Space (running, paused, archived, error)"
+      ssh_key_id:
+        type: "string"
+        description: "ID of the key that is added to this container for SSH access"
     description: "Represents a Space on the system."
   User:
     type: "object"

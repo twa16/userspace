@@ -15,7 +15,8 @@ import (
 //region Model Structs
 
 type Space struct {
-	ID            uint `gorm:"primary_key" json:"space_id"`           	   // Primary Key and ID of container
+	ID            uint `gorm:"primary_key" json:"-"`           // Primary Key and ID of container
+	PublicID      string `gorm:"index" json:"space_id"`        // Public UUID of this Space
 	CreatedAt     time.Time `json:"-"`                         // Creation time
 	ArchiveDate   time.Time `json:"archive_date,omitempty"`    // This is the timestamp of when the space was archived. This is set if the space was archived.
 	Archived      bool `json:"archived"`                       // This value is true if the space was deleted as a result of inactivity. All data is lost but metadata is preserved.
@@ -23,11 +24,12 @@ type Space struct {
 	LastNetAccess string `json:"last_net_access,omitempty"`    // The time this space was last accessed over the network but not SSH. This may be empty if the space was never accessed.
 	LastSSHAccess time.Time `json:"last_ssh_access,omitempty"` // The time this space was last accessed over SSH. This may be empty if the space was never accessed.
 	OwnerID       *string `json:"owner_id"`                    // Unique ID of the user that owns the Space. This is a link to User.
-	HostID	      string `json:"host_id"`			   // ID of the host that contains this space
+	HostID        string `json:"host_id"`                      // ID of the host that contains this space
 	ContainerID   string `json:"space_id"`                     // ID of Docker container running this space
-	SpaceState    string `json:"space_state"` 		   // Running State of Space (running, paused, archived, error)
+	SpaceState    string `json:"space_state"`                  // Running State of Space (running, paused, archived, error)
 	SSHAddress    string `json:"ssh_address"`                  // Address that should be used to SSH into the Space.
 	SSHPort       string `json:"ssh_port"`                     // Port that should be used to SSH into the Space.
+	SSHKeyID      uint `json: "ssh_key_id"`                    // ID of the SSH Key that this container is using
 }
 
 //Authentication Token
@@ -63,11 +65,14 @@ type SpaceUsageReport struct {
 	Timestamp       time.Time `json:"timestamp"`       // Time this data was recorded
 }
 
+//UserPublicKey Represents a stored user public ssh key
 type UserPublicKey struct {
-	ID        uint `gorm:"primary_key" json:"-"` //Primary Key
-	CreatedAt time.Time `json:"-"`               //Creation time
-	OwnerID   string `json:"user_id"`            // ID of user tha owns this key
-	PublicKey string `json:"public_key`          //Public key
+	ID        uint `gorm:"primary_key" json:"-"`    // Primary Key
+	PublicID  string `gorm:"index" json:"space_id"` // Public UUID of this Key
+	CreatedAt time.Time `json:"-"`                  // Creation time
+	OwnerID   string `json:"user_id"`               // ID of user tha owns this key
+	Name      string `json:"name"`                  // Friendly name of this key
+	PublicKey string `json:"public_key`             // Public key
 }
 
 // User User Object
@@ -84,7 +89,7 @@ type User struct {
 
 //DockerInstance Struct representing a docker instance to use for containers
 type DockerInstance struct {
-	ID             uint `gorm:"primary_key"`          //Primary Key
+	ID             uint `gorm:"primary_key" json:"-"` //Primary Key
 	CreatedAt      time.Time `json:"-"`               //Creation Time
 	UpdatedAt      time.Time `json:"-"`               //Last Update time
 	Name           string `json:"name"`               //Friendly name of this docker instance
