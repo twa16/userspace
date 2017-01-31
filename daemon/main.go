@@ -143,6 +143,7 @@ func Init() {
 	database.AutoMigrate(&SpaceUsageReport{})
 	database.AutoMigrate(&User{})
 	database.AutoMigrate(&DockerInstance{})
+	database.AutoMigrate(&UserPublicKey{})
 	log.Info("Migration Complete.")
 
 	initDockerHosts(database)
