@@ -93,12 +93,9 @@ definitions:
     - "ssh_port"
     properties:
       space_id:
-        type: "string"
-        description: "Unique ID of the Space"
-      host_id:
         type: "integer"
         format: "int32"
-        description: "ID of the host that is running this space"
+        description: "Unique ID of the Space"
       owner_id:
         type: "string"
         description: "Unique ID of the user that owns the Space. This is a link to\
@@ -137,6 +134,9 @@ definitions:
         format: "date"
         description: "This is the timestamp of when the space was archived. This is\
           \ set if the space was archived."
+      space_state:
+        type: "string"
+        description: "Running State of Space (running, paused, archived, error)"
     description: "Represents a Space on the system."
   User:
     type: "object"

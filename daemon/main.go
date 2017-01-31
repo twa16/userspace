@@ -15,15 +15,17 @@ import (
 //region Model Structs
 
 type Space struct {
-	ID            uint `gorm:"primary_key" json:"-"`           //Primary Key
-	CreatedAt     time.Time `json:"-"`                         //Creation time
+	ID            uint `gorm:"primary_key" json:"space_id"`           	   // Primary Key and ID of container
+	CreatedAt     time.Time `json:"-"`                         // Creation time
 	ArchiveDate   time.Time `json:"archive_date,omitempty"`    // This is the timestamp of when the space was archived. This is set if the space was archived.
 	Archived      bool `json:"archived"`                       // This value is true if the space was deleted as a result of inactivity. All data is lost but metadata is preserved.
 	ImageID       string `json:"image_id"`                     // This is the image that is used by the container that contains the space. This is a link to SpaceImage.
 	LastNetAccess string `json:"last_net_access,omitempty"`    // The time this space was last accessed over the network but not SSH. This may be empty if the space was never accessed.
 	LastSSHAccess time.Time `json:"last_ssh_access,omitempty"` // The time this space was last accessed over SSH. This may be empty if the space was never accessed.
 	OwnerID       *string `json:"owner_id"`                    // Unique ID of the user that owns the Space. This is a link to User.
-	SpaceID       string `json:"space_id" gorm:"index"`        // Unique ID of the Space
+	HostID	      string `json:"host_id"`			   // ID of the host that contains this space
+	ContainerID   string `json:"space_id"`                     // ID of Docker container running this space
+	SpaceState    string `json:"space_state"` 		   // Running State of Space (running, paused, archived, error)
 	SSHAddress    string `json:"ssh_address"`                  // Address that should be used to SSH into the Space.
 	SSHPort       string `json:"ssh_port"`                     // Port that should be used to SSH into the Space.
 }
@@ -61,6 +63,13 @@ type SpaceUsageReport struct {
 	Timestamp       time.Time `json:"timestamp"`       // Time this data was recorded
 }
 
+type UserPublicKey struct {
+	ID        uint `gorm:"primary_key" json:"-"` //Primary Key
+	CreatedAt time.Time `json:"-"`               //Creation time
+	OwnerID   string `json:"user_id"`            // ID of user tha owns this key
+	PublicKey string `json:"public_key`          //Public key
+}
+
 // User User Object
 type User struct {
 	ID                        uint `gorm:"primary_key" json:"-"`                    //Primary Key
@@ -83,7 +92,7 @@ type DockerInstance struct {
 	Endpoint       string `json:"sock_path"`          //Path to the sock if the connection type is local or remote address if the type is tls
 	CaCertPath     string `json:"ca_cert_path"`       //Path to the CA certificate if the connection type is tls
 	ClientCertPath string `json:"client_cert_path"`   //Path to the Client certificate if the connection type is tls
-	ClientKeyPath  string `json:"client_key_path"`     //Path to the Client key if the connection type is tls
+	ClientKeyPath  string `json:"client_key_path"`    //Path to the Client key if the connection type is tls
 	IsConnected    bool   `json:"is_connected"`       //This is true if the daemon is reporting it is connected to the Docker host
 	DockerClient   *docker.Client `gorm:"-" json:"-"` //Connection to the Docker instance
 }
@@ -106,12 +115,7 @@ func main() {
 //All code that would normally be in main() is put here in case we want to separate this into another package so it can be used as a library
 func Init() {
 	initLogging()
-	log.Infof("\n" +
-		"====================================\n" +
-		"== Userspace Daemon               ==\n" +
-		"== Version: %s                  ==\n" +
-		"== Manuel Gauto(github.com/twa16) ==\n" +
-		"====================================\n", VERSION)
+	log.Infof("\n"+"====================================\n"+"== Userspace Daemon               ==\n"+"== Version: %s                  ==\n"+"== Manuel Gauto(github.com/twa16) ==\n"+"====================================\n", VERSION)
 
 	//Load the Configuration
 	loadConfig()
