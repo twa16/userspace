@@ -24,12 +24,21 @@ type Space struct {
 	LastNetAccess string `json:"last_net_access,omitempty"`    // The time this space was last accessed over the network but not SSH. This may be empty if the space was never accessed.
 	LastSSHAccess time.Time `json:"last_ssh_access,omitempty"` // The time this space was last accessed over SSH. This may be empty if the space was never accessed.
 	OwnerID       *string `json:"owner_id"`                    // Unique ID of the user that owns the Space. This is a link to User.
-	HostID        string `json:"host_id"`                      // ID of the host that contains this space
+	HostID        uint `json:"host_id"`                        // ID of the host that contains this space
 	ContainerID   string `json:"space_id"`                     // ID of Docker container running this space
 	SpaceState    string `json:"space_state"`                  // Running State of Space (running, paused, archived, error)
 	SSHAddress    string `json:"ssh_address"`                  // Address that should be used to SSH into the Space.
 	SSHPort       string `json:"ssh_port"`                     // Port that should be used to SSH into the Space.
 	SSHKeyID      uint `json: "ssh_key_id"`                    // ID of the SSH Key that this container is using
+	PortLinks     []SpacePortLinks `json: "port_links"`
+}
+
+type SpacePortLinks struct {
+	ID            uint `gorm:"primary_key" json:"-"`           // Primary Key and ID of container
+	CreatedAt     time.Time `json:"-"`
+	SpacePort     uint16 `json:"space_port"`
+	ExternalPort  uint16 `json:"external_port;unique_index:idx_externaladdress"`
+	ExternalAddress string `json: "external_address;unique_index:idx_externaladdress"`
 }
 
 //Authentication Token
@@ -138,6 +147,8 @@ func Init() {
 	//Migrate Models
 	log.Info("Migrating Models...")
 	database.AutoMigrate(&Space{})
+	database.AutoMigrate(&SpacePortLinks{})
+	database.Model(&Space{}).Related(&SpacePortLinks{})
 	database.AutoMigrate(&AuthenticationToken{})
 	database.AutoMigrate(&SpaceImage{})
 	database.AutoMigrate(&SpaceUsageReport{})
