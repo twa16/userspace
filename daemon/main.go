@@ -25,7 +25,7 @@ type Space struct {
 	LastSSHAccess time.Time `json:"last_ssh_access,omitempty"` // The time this space was last accessed over SSH. This may be empty if the space was never accessed.
 	OwnerID       *string `json:"owner_id"`                    // Unique ID of the user that owns the Space. This is a link to User.
 	HostID        uint `json:"host_id"`                        // ID of the host that contains this space
-	FriendlyName  string `json:"space_name"`		   // Friendly name of this space
+	FriendlyName  string `json:"space_name"`                   // Friendly name of this space
 	ContainerID   string `json:"space_id"`                     // ID of Docker container running this space
 	SpaceState    string `json:"space_state"`                  // Running State of Space (running, paused, archived, error)
 	SSHAddress    string `json:"ssh_address"`                  // Address that should be used to SSH into the Space.
@@ -35,11 +35,12 @@ type Space struct {
 }
 
 type SpacePortLink struct {
-	ID            uint `gorm:"primary_key" json:"-"`           // Primary Key and ID of container
-	CreatedAt     time.Time `json:"-"`
-	SpacePort     uint16 `json:"space_port"`
-	ExternalPort  uint16 `json:"external_port;unique_index:idx_externaladdress"`
+	ID              uint `gorm:"primary_key" json:"-"` // Primary Key and ID of container
+	CreatedAt       time.Time `json:"-"`
+	SpacePort       uint16 `json:"space_port"`
+	ExternalPort    uint16 `json:"external_port;unique_index:idx_externaladdress"`
 	ExternalAddress string `json: "external_address;unique_index:idx_externaladdress"`
+	DisplayAddress  string `json: "external_display_address"`
 }
 
 //Authentication Token
@@ -99,18 +100,18 @@ type User struct {
 
 //DockerInstance Struct representing a docker instance to use for containers
 type DockerInstance struct {
-	ID             uint `gorm:"primary_key" json:"-"` //Primary Key
-	CreatedAt      time.Time `json:"-"`               //Creation Time
-	UpdatedAt      time.Time `json:"-"`               //Last Update time
-	Name           string `json:"name"`               //Friendly name of this docker instance
-	ConnectionType string `json:"connection_type"`    //Type of connection to use when connecting a docker instance (local,tls)
-	Endpoint       string `json:"sock_path"`          //Path to the sock if the connection type is local or remote address if the type is tls
-	CaCertPath     string `json:"ca_cert_path"`       //Path to the CA certificate if the connection type is tls
-	ClientCertPath string `json:"client_cert_path"`   //Path to the Client certificate if the connection type is tls
-	ClientKeyPath  string `json:"client_key_path"`    //Path to the Client key if the connection type is tls
-	IsConnected    bool   `json:"is_connected"`       //This is true if the daemon is reporting it is connected to the Docker host
-	DockerClient   *docker.Client `gorm:"-" json:"-"` //Connection to the Docker instance
-	ExternalAddress string `json:"external_address"`  //External address that the spaces will use
+	ID                     uint `gorm:"primary_key" json:"-"`       //Primary Key
+	CreatedAt              time.Time `json:"-"`                     //Creation Time
+	UpdatedAt              time.Time `json:"-"`                     //Last Update time
+	Name                   string `json:"name"`                     //Friendly name of this docker instance
+	ConnectionType         string `json:"connection_type"`          //Type of connection to use when connecting a docker instance (local,tls)
+	Endpoint               string `json:"sock_path"`                //Path to the sock if the connection type is local or remote address if the type is tls
+	CaCertPath             string `json:"ca_cert_path"`             //Path to the CA certificate if the connection type is tls
+	ClientCertPath         string `json:"client_cert_path"`         //Path to the Client certificate if the connection type is tls
+	ClientKeyPath          string `json:"client_key_path"`          //Path to the Client key if the connection type is tls
+	IsConnected            bool   `json:"is_connected"`             //This is true if the daemon is reporting it is connected to the Docker host
+	DockerClient           *docker.Client `gorm:"-" json:"-"`       //Connection to the Docker instance
+	ExternalAddress        string `json:"external_address"`         //External address that the spaces will use
 	ExternalDisplayAddress string `json:"external_display_address"` //External addresses that users will see
 }
 

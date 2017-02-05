@@ -66,13 +66,19 @@ func securePortForSpace(db *gorm.DB, space *Space, destPort uint16) {
 	log.Debugf("Attempting to secure port for %u:%u", space.ID, destPort)
 	spaceHost := getHostByID(db, space.HostID)
 	for true {
+		//Copy over the basics
 		portMapping := SpacePortLink{}
 		portMapping.ExternalAddress = spaceHost.ExternalAddress
+		portMapping.DisplayAddress = spaceHost.ExternalDisplayAddress
 		portMapping.SpacePort = destPort
+		//Generate a new port
 		var portTry = 20000 + rand.Intn(10000)
+		//Set it and append the mapping
 		portMapping.ExternalPort = uint16(portTry)
 		log.Debugf("Trying to secure port %u for %u", portTry, space.ID)
 		space.PortLinks = append(space.PortLinks, portMapping)
+		//Try to update and see if we get an error
+		//Maybe we should add an attempt cap here
 		err := db.Update(&space).Error
 		if err == nil {
 			log.Info("Secured port mapping for space %u: %u -> %u", space.ID, portTry, destPort)
