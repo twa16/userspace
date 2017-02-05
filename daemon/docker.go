@@ -4,7 +4,8 @@ import (
 	"github.com/fsouza/go-dockerclient"
 	"github.com/jinzhu/gorm"
 	"sync"
-	"github.com/docker/docker/api/types"
+	"context"
+	"math/rand"
 )
 
 //Contains running instances of docker hosts
@@ -53,13 +54,43 @@ func getHostByID(db *gorm.DB, hostID uint) *DockerInstance {
 	return dockerHost
 }
 
+//getImageByID Helper method that gets an image by id
 func getImageByID(db *gorm.DB, imageID string) SpaceImage {
 	var image SpaceImage
 	db.Find(&image, imageID)
 	return image
 }
 
-func startSpace(db *gorm.DB, space Space) {
+//securePortForSpace Picks an open port between 20000 and 30000
+func securePortForSpace(db *gorm.DB, space *Space, destPort uint16) {
+	log.Debugf("Attempting to secure port for %u:%u", space.ID, destPort)
+	spaceHost := getHostByID(db, space.HostID)
+	for true {
+		portMapping := SpacePortLink{}
+		portMapping.ExternalAddress = spaceHost.ExternalAddress
+		portMapping.SpacePort = destPort
+		var portTry = 20000 + rand.Intn(10000)
+		portMapping.ExternalPort = uint16(portTry)
+		log.Debugf("Trying to secure port %u for %u", portTry, space.ID)
+		space.PortLinks = append(space.PortLinks, portMapping)
+		err := db.Update(&space).Error
+		if err == nil {
+			log.Info("Secured port mapping for space %u: %u -> %u", space.ID, portTry, destPort)
+			break
+		} else {
+			log.Info("Port %u is taken", portTry)
+		}
+	}
+
+}
+
+//TODO: Make this do the thing. Returns first instance since when this was written spaces weren't created yet. This will probably be done with raw sql.
+//selectLeastOccupiedHost Returns the host that has the fewest number of instances.
+func selectLeastOccupiedHost(db *gorm.DB) *DockerInstance {
+	return DockerInstances[0]
+}
+
+func startSpace(db *gorm.DB, client *docker.Client, space Space) {
 	//======Container Config=====
 	var containerConfig docker.Config
 	//Set the image
@@ -97,8 +128,6 @@ func startSpace(db *gorm.DB, space Space) {
 	c, err := client.CreateContainer(config)
 	return c, err
 }
-
-
 
 func execInSpace(db *gorm.DB, space Space, command []string) (error){
 	dockerHost := getHostByID(db, space.HostID)

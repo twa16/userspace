@@ -34,3 +34,9 @@ The API is under active development.
 You can see the documentation here: https://userspace.restlet.io
 This swagger.yaml file has the most update to date version of the API. 
 The online viewer will be updated periodically.
+
+### Space Creation Process
+
+1. User requests a Space. This gives us: Name and Image
+2. The Daemon chooses a Host. This gives us: An external address
+3. A port is chosen

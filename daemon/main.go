@@ -25,15 +25,16 @@ type Space struct {
 	LastSSHAccess time.Time `json:"last_ssh_access,omitempty"` // The time this space was last accessed over SSH. This may be empty if the space was never accessed.
 	OwnerID       *string `json:"owner_id"`                    // Unique ID of the user that owns the Space. This is a link to User.
 	HostID        uint `json:"host_id"`                        // ID of the host that contains this space
+	FriendlyName  string `json:"space_name"`		   // Friendly name of this space
 	ContainerID   string `json:"space_id"`                     // ID of Docker container running this space
 	SpaceState    string `json:"space_state"`                  // Running State of Space (running, paused, archived, error)
 	SSHAddress    string `json:"ssh_address"`                  // Address that should be used to SSH into the Space.
 	SSHPort       string `json:"ssh_port"`                     // Port that should be used to SSH into the Space.
 	SSHKeyID      uint `json: "ssh_key_id"`                    // ID of the SSH Key that this container is using
-	PortLinks     []SpacePortLinks `json: "port_links"`
+	PortLinks     []SpacePortLink `json: "port_links"`
 }
 
-type SpacePortLinks struct {
+type SpacePortLink struct {
 	ID            uint `gorm:"primary_key" json:"-"`           // Primary Key and ID of container
 	CreatedAt     time.Time `json:"-"`
 	SpacePort     uint16 `json:"space_port"`
@@ -109,6 +110,7 @@ type DockerInstance struct {
 	ClientKeyPath  string `json:"client_key_path"`    //Path to the Client key if the connection type is tls
 	IsConnected    bool   `json:"is_connected"`       //This is true if the daemon is reporting it is connected to the Docker host
 	DockerClient   *docker.Client `gorm:"-" json:"-"` //Connection to the Docker instance
+	ExternalAddress string `json:"external_address"`
 }
 
 //endregion
@@ -147,8 +149,8 @@ func Init() {
 	//Migrate Models
 	log.Info("Migrating Models...")
 	database.AutoMigrate(&Space{})
-	database.AutoMigrate(&SpacePortLinks{})
-	database.Model(&Space{}).Related(&SpacePortLinks{})
+	database.AutoMigrate(&SpacePortLink{})
+	database.Model(&Space{}).Related(&SpacePortLink{})
 	database.AutoMigrate(&AuthenticationToken{})
 	database.AutoMigrate(&SpaceImage{})
 	database.AutoMigrate(&SpaceUsageReport{})
