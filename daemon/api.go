@@ -8,6 +8,10 @@ import (
 	"fmt"
 )
 
+func postSpaceAPIHandler(w http.ResponseWriter, r *http.Request) {
+
+}
+
 //postDockerHostAPIHandler Handles the requests for adding a new docker host
 func postDockerHostAPIHandler(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
@@ -31,6 +35,7 @@ func pingAPIHandler(w http.ResponseWriter, r *http.Request) {
 
 func startAPI() {
 	mux := goji.NewMux()
+	mux.HandleFunc(pat.Post("/api/v1/hosts"), postSpaceAPIHandler)
 	mux.HandleFunc(pat.Post("/api/v1/hosts"), postDockerHostAPIHandler)
 	mux.HandleFunc(pat.Get("/api/v1/ping"), pingAPIHandler)
 	log.Info("Starting API Mux...")

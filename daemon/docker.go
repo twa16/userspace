@@ -197,9 +197,7 @@ func execInSpace(db *gorm.DB, space Space, command []string) (error){
 		log.Warningf("Error Executing Command on Host %s: %s\n", dockerHost.Name, err.Error())
 		return err
 	}
-
-
-
+	return nil
 }
 
 func startDockerClient(instance *DockerInstance) (*docker.Client, error) {

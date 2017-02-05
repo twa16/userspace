@@ -19,16 +19,16 @@ type Space struct {
 	PublicID      string `gorm:"index" json:"space_id"`        // Public UUID of this Space
 	CreatedAt     time.Time `json:"-"`                         // Creation time
 	ArchiveDate   time.Time `json:"archive_date,omitempty"`    // This is the timestamp of when the space was archived. This is set if the space was archived.
-	Archived      bool `json:"archived"`                       // This value is true if the space was deleted as a result of inactivity. All data is lost but metadata is preserved.
-	ImageID       string `json:"image_id"`                     // This is the image that is used by the container that contains the space. This is a link to SpaceImage.
+	Archived      bool `json:"archived,omitempty"`                       // This value is true if the space was deleted as a result of inactivity. All data is lost but metadata is preserved.
+	ImageID       string `json:"image_id,omitempty"`                     // This is the image that is used by the container that contains the space. This is a link to SpaceImage.
 	LastNetAccess string `json:"last_net_access,omitempty"`    // The time this space was last accessed over the network but not SSH. This may be empty if the space was never accessed.
 	LastSSHAccess time.Time `json:"last_ssh_access,omitempty"` // The time this space was last accessed over SSH. This may be empty if the space was never accessed.
-	OwnerID       *string `json:"owner_id"`                    // Unique ID of the user that owns the Space. This is a link to User.
-	HostID        uint `json:"host_id"`                        // ID of the host that contains this space
-	FriendlyName  string `json:"space_name"`                   // Friendly name of this space
-	ContainerID   string `json:"space_id"`                     // ID of Docker container running this space
-	SpaceState    string `json:"space_state"`                  // Running State of Space (running, paused, archived, error)
-	SSHKeyID      uint `json: "ssh_key_id"`                    // ID of the SSH Key that this container is using
+	OwnerID       *string `json:"owner_id,omitempty"`                    // Unique ID of the user that owns the Space. This is a link to User.
+	HostID        uint `json:"host_id,omitempty"`                        // ID of the host that contains this space
+	FriendlyName  string `json:"space_name,omitempty"`                   // Friendly name of this space
+	ContainerID   string `json:"space_id,omitempty"`                     // ID of Docker container running this space
+	SpaceState    string `json:"space_state,omitempty"`                  // Running State of Space (running, paused, archived, error)
+	SSHKeyID      uint `json: "ssh_key_id,omitempty"`                    // ID of the SSH Key that this container is using
 	PortLinks     []SpacePortLink `json: "port_links"`	   // Shows what external ports are bound to the ports on the space
 }
 
@@ -138,7 +138,7 @@ func Init() {
 
 	//Init DB
 	log.Info("Connecting to database...")
-	db, err := gorm.Open("sqlite3", "./dev.db")
+	db, err := gorm.Open("sqlite3", "./userspace.db")
 	database = db
 	defer database.Close()
 	if err != nil {
