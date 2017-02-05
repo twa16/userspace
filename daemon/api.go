@@ -9,7 +9,38 @@ import (
 )
 
 func postSpaceAPIHandler(w http.ResponseWriter, r *http.Request) {
+	var requestingUser User
 
+	var spaceRequest Space
+	jsonDecoder := json.NewDecoder(r.Body)
+	err := jsonDecoder.Decode(spaceRequest)
+	//Ensure the request is valid JSON
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprint(w, "Invalid Request: Error Decoding JSON")
+		return
+	}
+
+	//Let's copy the data we want. Excludes anything that does not belong.
+	var createdSpace Space
+	createdSpace.ImageID = spaceRequest.ImageID
+	createdSpace.SSHKeyID = spaceRequest.SSHKeyID
+	createdSpace.FriendlyName = spaceRequest.FriendlyName
+	createdSpace.OwnerID = requestingUser.UserID
+
+	log.Infof("Got Space Creation Request from %s\n", requestingUser.UserID)
+	//Check Quota
+	isUnderQuota := checkQuotaRestrictions(requestingUser.UserID)
+	if !isUnderQuota {
+		w.WriteHeader(http.StatusForbidden)
+		fmt.Fprintf(w, "Quota Exceeded")
+		log.Warningf("Request from %s because of quota restrictions\n", requestingUser.UserID)
+		return
+	}
+
+	go startSpace(database, createdSpace)
+
+	fmt.Fprint(w, "Space creation started")
 }
 
 //postDockerHostAPIHandler Handles the requests for adding a new docker host
@@ -40,4 +71,10 @@ func startAPI() {
 	mux.HandleFunc(pat.Get("/api/v1/ping"), pingAPIHandler)
 	log.Info("Starting API Mux...")
 	log.Fatal(http.ListenAndServe(":8080", mux))
+}
+
+//checkQuotaRestrictions Returns true if the user has not yet hit their quota on Spaces
+func checkQuotaRestrictions(userID string) bool {
+	//TODO: This should do the thing
+	return true
 }

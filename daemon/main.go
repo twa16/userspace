@@ -23,12 +23,12 @@ type Space struct {
 	ImageID       string `json:"image_id,omitempty"`                     // This is the image that is used by the container that contains the space. This is a link to SpaceImage.
 	LastNetAccess string `json:"last_net_access,omitempty"`    // The time this space was last accessed over the network but not SSH. This may be empty if the space was never accessed.
 	LastSSHAccess time.Time `json:"last_ssh_access,omitempty"` // The time this space was last accessed over SSH. This may be empty if the space was never accessed.
-	OwnerID       *string `json:"owner_id,omitempty"`                    // Unique ID of the user that owns the Space. This is a link to User.
+	OwnerID       string `json:"owner_id,omitempty"`                    // Unique ID of the user that owns the Space. This is a link to User.
 	HostID        uint `json:"host_id,omitempty"`                        // ID of the host that contains this space
 	FriendlyName  string `json:"space_name,omitempty"`                   // Friendly name of this space
 	ContainerID   string `json:"space_id,omitempty"`                     // ID of Docker container running this space
 	SpaceState    string `json:"space_state,omitempty"`                  // Running State of Space (running, paused, archived, error)
-	SSHKeyID      uint `json: "ssh_key_id,omitempty"`                    // ID of the SSH Key that this container is using
+	SSHKeyID      string `json: "ssh_key_id,omitempty"`                    // ID of the SSH Key that this container is using
 	PortLinks     []SpacePortLink `json: "port_links"`	   // Shows what external ports are bound to the ports on the space
 }
 
@@ -55,10 +55,10 @@ type SpaceImage struct {
 	ID          uint `gorm:"primary_key" json:"-"`     //Primary Key
 	CreatedAt   time.Time `json:"-"`                   //Creation time
 	Active      bool `json:"active"`                   // If this is set to false, the user cannot use the image and is only kept to avoid breaking older spaces.
-	Description *string `json:"description"`           // Friendly description of this image.
-	DockerImage *string `json:"docker_image"`          // This is the full URI of the docker image.
-	ImageID     *string `json:"image_id" gorm:"index"` // Unique ID of the image
-	Name        *string `json:"name"`                  // Friendly name of this image.
+	Description string `json:"description"`           // Friendly description of this image.
+	DockerImage string `json:"docker_image"`          // This is the full URI of the docker image.
+	ImageID     string `json:"image_id" gorm:"index"` // Unique ID of the image
+	Name        string `json:"name"`                  // Friendly name of this image.
 }
 
 // SpaceUsageReport This object stores the metrics for a space at a specific point in time. The reports are not reset each time therefore the difference between two reports will show the increase in the time between the reports.
@@ -93,7 +93,7 @@ type User struct {
 	ExternallyAuthentication  bool `json:"externally_authentication"`               // If true, this user is authenticated against an external service which means there will be an authentication_backend_link but not a password.
 	LastLoginTimestamp        strfmt.Date `json:"last_login_timestamp,omitempty"`   // The last time the user logged in. This is blank if the user has never logged in.
 	Password                  string `json:"password,omitempty"`                    // BCrypt hash of the user password. This is only set if the user is not externally authenticated.
-	UserID                    *string `json:"user_id"`                              // Unique ID of the user
+	UserID                    string `json:"user_id"`                              // Unique ID of the user
 }
 
 //DockerInstance Struct representing a docker instance to use for containers

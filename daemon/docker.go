@@ -50,10 +50,13 @@ func getAllDockerInstanceConfigurations(db *gorm.DB) []DockerInstance {
 }
 
 //getHostByID Helper method that gets a host from the db by id
-func getHostByID(db *gorm.DB, hostID uint) *DockerInstance {
-	var dockerHost *DockerInstance
-	db.Find(dockerHost, hostID)
-	return dockerHost
+func getHostByID(hostID uint) *DockerInstance {
+	for i, instance := range DockerInstances {
+		if instance.ID == hostID {
+			return DockerInstances[i]
+		}
+	}
+	return nil
 }
 
 //getImageByID Helper method that gets an image by id
@@ -72,7 +75,7 @@ func checkImageExists(db *gorm.DB, imageID string) bool {
 //securePortForSpace Picks an open port between 20000 and 30000. Saves new PortLink
 func securePortForSpace(db *gorm.DB, space *Space, destPort uint16) int {
 	log.Debugf("Attempting to secure port for %u:%u\n", space.ID, destPort)
-	spaceHost := getHostByID(db, space.HostID)
+	spaceHost := getHostByID(space.HostID)
 	for true {
 		//Copy over the basics
 		portMapping := SpacePortLink{}
@@ -95,7 +98,8 @@ func securePortForSpace(db *gorm.DB, space *Space, destPort uint16) int {
 			log.Info("Port %u is taken\n", portTry)
 		}
 	}
-
+	//This should never happen unless something went horribly wrong
+	return -1
 }
 
 //TODO: Make this do the thing. Returns first instance since when this was written spaces weren't created yet. This will probably be done with raw sql.
@@ -104,14 +108,16 @@ func selectLeastOccupiedHost(db *gorm.DB) *DockerInstance {
 	return DockerInstances[0]
 }
 
-func startSpace(db *gorm.DB, client *docker.Client, space Space) (error, *Space){
+func startSpace(db *gorm.DB, space Space) (error, *Space){
 	//======Initialization Steps=====
 	//Check if the requested image exists
 	if !checkImageExists(db, space.ImageID) {
 		return errors.New("Invalid Image Specified"), nil
 	}
 	//Pick a host
-	space.HostID = selectLeastOccupiedHost(db).ID
+	dockerHost := selectLeastOccupiedHost(db)
+	space.HostID = dockerHost.ID
+	client := dockerHost.DockerClient
 	//Save it
 	db.Create(&space)
 	log.Infof("Select Host %u for space %u\n", space.HostID, space.ID)
@@ -120,7 +126,7 @@ func startSpace(db *gorm.DB, client *docker.Client, space Space) (error, *Space)
 	var containerConfig docker.Config
 	//Set the image
 
-	containerConfig.Image = *getImageByID(db, space.ImageID).DockerImage
+	containerConfig.Image = getImageByID(db, space.ImageID).DockerImage
 
 	//Empty placeholder struct
 	var v struct{}
@@ -184,7 +190,7 @@ func startSpace(db *gorm.DB, client *docker.Client, space Space) (error, *Space)
 }
 
 func execInSpace(db *gorm.DB, space Space, command []string) (error){
-	dockerHost := getHostByID(db, space.HostID)
+	dockerHost := getHostByID(space.HostID)
 
 	execOptions := docker.CreateExecOptions{}
 	execOptions.Cmd = command
