@@ -103,6 +103,9 @@ definitions:
         type: "string"
         description: "This is the image that is used by the container that contains\
           \ the space. This is a link to SpaceImage."
+      space_name:
+        type: "string"
+        description: "Friendly name of the space"
       creation_date:
         type: "string"
         format: "date"
@@ -292,6 +295,12 @@ definitions:
         type: "string"
       client_key_path:
         type: "string"
+      external_address:
+        type: "string"
+        description: "External Address to be used by the docker instances as their binding point"
+      external_display_address:
+        type: "string"
+        description: "External address that users will see to connect to this machine"
       is_connected:
         type: "boolean"
         description: "This is true if the daemon is reporting it is connected to the\

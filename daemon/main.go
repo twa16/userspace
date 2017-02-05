@@ -110,7 +110,8 @@ type DockerInstance struct {
 	ClientKeyPath  string `json:"client_key_path"`    //Path to the Client key if the connection type is tls
 	IsConnected    bool   `json:"is_connected"`       //This is true if the daemon is reporting it is connected to the Docker host
 	DockerClient   *docker.Client `gorm:"-" json:"-"` //Connection to the Docker instance
-	ExternalAddress string `json:"external_address"`
+	ExternalAddress string `json:"external_address"`  //External address that the spaces will use
+	ExternalDisplayAddress string `json:"external_display_address"` //External addresses that users will see
 }
 
 //endregion
