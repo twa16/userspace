@@ -6,6 +6,8 @@ import (
 	"sync"
 	"context"
 	"math/rand"
+	"github.com/pkg/errors"
+	"strconv"
 )
 
 //Contains running instances of docker hosts
@@ -61,9 +63,15 @@ func getImageByID(db *gorm.DB, imageID string) SpaceImage {
 	return image
 }
 
-//securePortForSpace Picks an open port between 20000 and 30000
-func securePortForSpace(db *gorm.DB, space *Space, destPort uint16) {
-	log.Debugf("Attempting to secure port for %u:%u", space.ID, destPort)
+//checkImageExists Check if an image exists
+func checkImageExists(db *gorm.DB, imageID string) bool {
+	var image SpaceImage
+	return !db.Find(&image, imageID).RecordNotFound()
+}
+
+//securePortForSpace Picks an open port between 20000 and 30000. Saves new PortLink
+func securePortForSpace(db *gorm.DB, space *Space, destPort uint16) int {
+	log.Debugf("Attempting to secure port for %u:%u\n", space.ID, destPort)
 	spaceHost := getHostByID(db, space.HostID)
 	for true {
 		//Copy over the basics
@@ -75,16 +83,16 @@ func securePortForSpace(db *gorm.DB, space *Space, destPort uint16) {
 		var portTry = 20000 + rand.Intn(10000)
 		//Set it and append the mapping
 		portMapping.ExternalPort = uint16(portTry)
-		log.Debugf("Trying to secure port %u for %u", portTry, space.ID)
+		log.Debugf("Trying to secure port %u for %u\n", portTry, space.ID)
 		space.PortLinks = append(space.PortLinks, portMapping)
 		//Try to update and see if we get an error
 		//Maybe we should add an attempt cap here
 		err := db.Update(&space).Error
 		if err == nil {
-			log.Info("Secured port mapping for space %u: %u -> %u", space.ID, portTry, destPort)
-			break
+			log.Info("Secured port mapping for space %u: %u -> %u\n", space.ID, portTry, destPort)
+			return portTry
 		} else {
-			log.Info("Port %u is taken", portTry)
+			log.Info("Port %u is taken\n", portTry)
 		}
 	}
 
@@ -96,10 +104,22 @@ func selectLeastOccupiedHost(db *gorm.DB) *DockerInstance {
 	return DockerInstances[0]
 }
 
-func startSpace(db *gorm.DB, client *docker.Client, space Space) {
+func startSpace(db *gorm.DB, client *docker.Client, space Space) (error, *Space){
+	//======Initialization Steps=====
+	//Check if the requested image exists
+	if !checkImageExists(db, space.ImageID) {
+		return errors.New("Invalid Image Specified"), nil
+	}
+	//Pick a host
+	space.HostID = selectLeastOccupiedHost(db).ID
+	//Save it
+	db.Create(&space)
+	log.Infof("Select Host %u for space %u\n", space.HostID, space.ID)
+
 	//======Container Config=====
 	var containerConfig docker.Config
 	//Set the image
+
 	containerConfig.Image = *getImageByID(db, space.ImageID).DockerImage
 
 	//Empty placeholder struct
@@ -112,13 +132,19 @@ func startSpace(db *gorm.DB, client *docker.Client, space Space) {
 	containerConfig.ExposedPorts = make(map[docker.Port]struct{})
 	containerConfig.ExposedPorts["22/tcp"] = v
 	containerConfig.ExposedPorts["1337/tcp"] = v
+	containerConfig.ExposedPorts["1337/udp"] = v
 
 	//=====Host Config======
 	var hostConfig docker.HostConfig
+	//Secure Ports in DB
+	sshExternalPort := securePortForSpace(db, &space, 22)
+	serviceExternalPort := securePortForSpace(db, &space, 1337)
 	//Setup Port Maps
 	//Forward a dynamic host port to container. Listen on localhost so that nginx can proxy.
 	hostConfig.PortBindings = make(map[docker.Port][]docker.PortBinding)
-	hostConfig.PortBindings["22/tcp"] = append(hostConfig.PortBindings["22/tcp"], docker.PortBinding{HostIP: "127.0.0.1", HostPort: externalPort})
+	hostConfig.PortBindings["22/tcp"] = append(hostConfig.PortBindings["22/tcp"], docker.PortBinding{HostIP: "127.0.0.1", HostPort: strconv.Itoa(sshExternalPort)})
+	hostConfig.PortBindings["1337/tcp"] = append(hostConfig.PortBindings["1337/tcp"], docker.PortBinding{HostIP: "127.0.0.1", HostPort: strconv.Itoa(serviceExternalPort)})
+	hostConfig.PortBindings["1337/udp"] = append(hostConfig.PortBindings["1337/udp"], docker.PortBinding{HostIP: "127.0.0.1", HostPort: strconv.Itoa(serviceExternalPort)})
 
 	//======Network Config=====
 	var networkConfig docker.NetworkingConfig
@@ -132,7 +158,29 @@ func startSpace(db *gorm.DB, client *docker.Client, space Space) {
 	config.Context = context.Background()
 	//Create Container
 	c, err := client.CreateContainer(config)
-	return c, err
+	if err == nil {
+		log.Fatalf("Failed to create container for space %u\n", space.ID)
+		space.SpaceState = "Error Creating"
+		db.Save(space)
+		return err, nil
+	}
+	//Set container
+	space.ContainerID = c.ID
+	space.SpaceState = "Created"
+	db.Save(&space)
+	log.Infof("Created container for space %u: %s\n", space.ID, space.ContainerID)
+
+	err = client.StartContainer(space.ContainerID, nil)
+	if err != nil {
+		log.Fatalf("Error starting container for space %u: %s\n", space.ID, space.ContainerID)
+		space.SpaceState = "Error Starting"
+		db.Save(space)
+	} else {
+		log.Infof("Container for Space %u started: %s\n", space.ID, space.ContainerID)
+		space.SpaceState = "Running"
+		db.Save(space)
+	}
+	return nil, &space
 }
 
 func execInSpace(db *gorm.DB, space Space, command []string) (error){

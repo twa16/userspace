@@ -28,8 +28,6 @@ type Space struct {
 	FriendlyName  string `json:"space_name"`                   // Friendly name of this space
 	ContainerID   string `json:"space_id"`                     // ID of Docker container running this space
 	SpaceState    string `json:"space_state"`                  // Running State of Space (running, paused, archived, error)
-	SSHAddress    string `json:"ssh_address"`                  // Address that should be used to SSH into the Space.
-	SSHPort       string `json:"ssh_port"`                     // Port that should be used to SSH into the Space.
 	SSHKeyID      uint `json: "ssh_key_id"`                    // ID of the SSH Key that this container is using
 	PortLinks     []SpacePortLink `json: "port_links"`	   // Shows what external ports are bound to the ports on the space
 }
