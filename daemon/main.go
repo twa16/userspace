@@ -131,7 +131,13 @@ func main() {
 //All code that would normally be in main() is put here in case we want to separate this into another package so it can be used as a library
 func Init() {
 	initLogging()
-	log.Infof("\n"+"====================================\n"+"== Userspace Daemon               ==\n"+"== Version: %s                  ==\n"+"== Manuel Gauto(github.com/twa16) ==\n"+"====================================\n", VERSION)
+	log.Infof(
+		"\n====================================\n"+
+		"== Userspace Daemon               ==\n"+
+		"== Version: %s                  ==\n"+
+		"== Manuel Gauto(github.com/twa16) ==\n"+
+		"== With <3 to SRCT (srct.gmu.edu) ==\n"+
+		"====================================\n", VERSION)
 
 	//Load the Configuration
 	loadConfig()
@@ -150,7 +156,6 @@ func Init() {
 	log.Info("Migrating Models...")
 	database.AutoMigrate(&Space{})
 	database.AutoMigrate(&SpacePortLink{})
-	database.Model(&Space{}).Related(&SpacePortLink{})
 	database.AutoMigrate(&AuthenticationToken{})
 	database.AutoMigrate(&SpaceImage{})
 	database.AutoMigrate(&SpaceUsageReport{})
