@@ -40,3 +40,13 @@ The online viewer will be updated periodically.
 1. User requests a Space. This gives us: Name and Image
 2. The Daemon chooses a Host. This gives us: An external address
 3. A port is chosen
+4. A proxy entry is created
+
+### What do you get in a Space
+
+**So what is a space?**
+A Space is a small linux environment that lives inside of a Docker container. The key
+features are as follows:
+
+- You get root SSH access to the Space using the specified port and address
+- You will get an external port that is pointed at port 1337 on the Space. You service should listen here.

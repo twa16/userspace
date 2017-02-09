@@ -66,7 +66,7 @@ func pingAPIHandler(w http.ResponseWriter, r *http.Request) {
 
 func startAPI() {
 	mux := goji.NewMux()
-	mux.HandleFunc(pat.Post("/api/v1/hosts"), postSpaceAPIHandler)
+	mux.HandleFunc(pat.Post("/api/v1/spaces"), postSpaceAPIHandler)
 	mux.HandleFunc(pat.Post("/api/v1/hosts"), postDockerHostAPIHandler)
 	mux.HandleFunc(pat.Get("/api/v1/ping"), pingAPIHandler)
 	log.Info("Starting API Mux...")
