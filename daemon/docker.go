@@ -122,7 +122,7 @@ func startSpace(db *gorm.DB, space Space) (error, *Space){
 	client := dockerHost.DockerClient
 	//Save it
 	db.Create(&space)
-	log.Infof("Select Host %u for space %d\n", space.HostID, space.ID)
+	log.Infof("Select Host %d for space %d\n", space.HostID, space.ID)
 
 	//======Container Config=====
 	var containerConfig docker.Config
@@ -175,18 +175,18 @@ func startSpace(db *gorm.DB, space Space) (error, *Space){
 	}
 	//Set container
 	space.ContainerID = c.ID
-	space.SpaceState = "Created"
+	space.SpaceState = "created"
 	db.Save(&space)
 	log.Infof("Created container for space %d: %s\n", space.ID, space.ContainerID)
 
 	err = client.StartContainer(space.ContainerID, nil)
 	if err != nil {
 		log.Criticalf("Error starting container for space %d: %s\n", space.ID, space.ContainerID)
-		space.SpaceState = "Error Starting"
+		space.SpaceState = "error starting"
 		db.Save(space)
 	} else {
 		log.Infof("Container for Space %d started: %s\n", space.ID, space.ContainerID)
-		space.SpaceState = "Running"
+		space.SpaceState = "running"
 		db.Save(space)
 	}
 	return nil, &space

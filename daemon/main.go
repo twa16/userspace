@@ -245,12 +245,23 @@ func updateSpaceStates(db * gorm.DB)  {
 		container, err := dClient.InspectContainer(space.ContainerID)
 		if err != nil {
 			log.Critical("Error updating space state: "+err.Error())
+			log.Infof("Updated Space %s(%d) to state %s from %s\n",space.FriendlyName, space.ID, "error", space.SpaceState)
+			space.SpaceState = "error"
+			db.Save(space)
+			continue
+		}
+		if container == nil {
+			log.Infof("Updated Space %s(%d) to state %s from %s\n",space.FriendlyName, space.ID, "dead", space.SpaceState)
+			space.SpaceState = "dead"
+			db.Save(space)
+			continue
 		}
 		//Save the status
 		if container.State.Status != space.SpaceState {
-			log.Infof("Updated Space %s(5d) to state %s from %s\n",space.FriendlyName, space.ID, container.State.Status, space.SpaceState)
+			log.Infof("Updated Space %s(%d) to state %s from %s\n",space.FriendlyName, space.ID, container.State.Status, space.SpaceState)
 			space.SpaceState = container.State.Status
 			db.Save(space)
+			continue
 		}
 	}
 }
