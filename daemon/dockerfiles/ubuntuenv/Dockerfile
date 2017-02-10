@@ -15,5 +15,7 @@ ENV HOME /root
 # Define working directory.
 WORKDIR /root
 
+RUN echo "root:Docker!" | chpasswd
+
 # Define default command.
 CMD ["bash"]

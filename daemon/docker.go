@@ -233,3 +233,40 @@ func startDockerClient(instance *DockerInstance) (*docker.Client, error) {
 	log.Info("Connection Suceeded! API Version: "+env.Get("ApiVersion"))
 	return cli, err
 }
+
+func ensureStarterImages(db *gorm.DB) {
+	ubuntuImage := SpaceImage{}
+	db.Where("docker_image = ? AND docker_image_tag = ?", "userspace/ubuntu", "latest").First(&ubuntuImage)
+	if ubuntuImage.Active == false {
+		log.Info("Downloading Start Images")
+		ubuntuImage.Active = true
+		ubuntuImage.Description = "Basic Ubuntu Image"
+		ubuntuImage.DockerImage = "userspace/ubuntu"
+		ubuntuImage.DockerImageTag = "latest"
+		ubuntuImage.Name = "Ubuntu"
+		db.Create(&ubuntuImage)
+	}
+}
+
+func downloadDockerImages(db *gorm.DB) {
+	images := []SpaceImage{}
+	db.Find(&images)
+	for _, image := range images {
+		for _, instance := range DockerInstances {
+			if instance.IsConnected {
+				pullDockerImage(instance.DockerClient, image.DockerImage, image.DockerImageTag)
+				log.Infof("Downloaded image to %s\n", instance.Name)
+			} else {
+				log.Warningf("Skipping %s as it is not connected!\n", instance.Name)
+			}
+		}
+	}
+}
+
+//pullDockerImage Pulls a docker image from the hub
+func pullDockerImage(dClient *docker.Client, image string, tag string) error {
+	pullOptions := docker.PullImageOptions{Repository: image, Tag: tag}
+	authOptions := docker.AuthConfiguration{}
+	err := dClient.PullImage(pullOptions, authOptions)
+	return err
+}

@@ -52,12 +52,12 @@ type AuthenticationToken struct {
 
 // SpaceImage
 type SpaceImage struct {
-	ID          uint `gorm:"primary_key" json:"-"`     //Primary Key
+	ID          uint `gorm:"primary_key" json:"image_id"`     //Primary Key
 	CreatedAt   time.Time `json:"-"`                   //Creation time
 	Active      bool `json:"active"`                   // If this is set to false, the user cannot use the image and is only kept to avoid breaking older spaces.
 	Description string `json:"description"`           // Friendly description of this image.
 	DockerImage string `json:"docker_image"`          // This is the full URI of the docker image.
-	ImageID     string `json:"image_id" gorm:"index"` // Unique ID of the image
+	DockerImageTag    string `json:"docker_image_tag"`	  // Tag to use when retrieving the image
 	Name        string `json:"name"`                  // Friendly name of this image.
 }
 
@@ -165,6 +165,14 @@ func Init() {
 	log.Info("Migration Complete.")
 
 	initDockerHosts(database)
+
+	//Check if we need starter images
+	if viper.GetBool("PullStarterImages") {
+		ensureStarterImages(database)
+	}
+	log.Info("Synchronizing Images with Hosts")
+	downloadDockerImages(database)
+
 	startAPI()
 }
 
