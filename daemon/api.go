@@ -64,10 +64,19 @@ func pingAPIHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "PONG")
 }
 
+//getImagesAPIHandler Get images
+func getImagesAPIHandler(w http.ResponseWriter, r *http.Request) {
+	images := []SpaceImage{}
+	database.Find(&images)
+	jsonBytes, _ := json.Marshal(images)
+	fmt.Fprintf(w, string(jsonBytes))
+}
+
 func startAPI() {
 	mux := goji.NewMux()
 	mux.HandleFunc(pat.Post("/api/v1/spaces"), postSpaceAPIHandler)
 	mux.HandleFunc(pat.Post("/api/v1/hosts"), postDockerHostAPIHandler)
+	mux.HandleFunc(pat.Get("/api/v1/images"), getImagesAPIHandler)
 	mux.HandleFunc(pat.Get("/api/v1/ping"), pingAPIHandler)
 	log.Info("Starting API Mux...")
 	log.Fatal(http.ListenAndServe(":8080", mux))
