@@ -74,8 +74,9 @@ func checkImageExists(db *gorm.DB, imageID string) bool {
 
 //securePortForSpace Picks an open port between 20000 and 30000. Saves new PortLink
 func securePortForSpace(db *gorm.DB, space *Space, destPort uint16) int {
-	log.Debugf("Attempting to secure port for %u:%u\n", space.ID, destPort)
+	log.Debugf("Attempting to secure port for %d: %d\n", space.ID, destPort)
 	spaceHost := getHostByID(space.HostID)
+	originalPort := space.PortLinks
 	for true {
 		//Copy over the basics
 		portMapping := SpacePortLink{}
@@ -86,16 +87,17 @@ func securePortForSpace(db *gorm.DB, space *Space, destPort uint16) int {
 		var portTry = 20000 + rand.Intn(10000)
 		//Set it and append the mapping
 		portMapping.ExternalPort = uint16(portTry)
-		log.Debugf("Trying to secure port %u for %u\n", portTry, space.ID)
-		space.PortLinks = append(space.PortLinks, portMapping)
+		log.Debugf("Trying to secure port %d for %d\n", portTry, space.ID)
+		space.PortLinks = append(originalPort, portMapping)
+		db.Model(&space).Related(&space.PortLinks)
 		//Try to update and see if we get an error
 		//Maybe we should add an attempt cap here
-		err := db.Update(&space).Error
+		err := db.Save(&space).Error
 		if err == nil {
-			log.Info("Secured port mapping for space %u: %u -> %u\n", space.ID, portTry, destPort)
+			log.Infof("Secured port mapping for space %d: %d -> %d\n", space.ID, portTry, destPort)
 			return portTry
 		} else {
-			log.Info("Port %u is taken\n", portTry)
+			log.Infof("Port %d is taken\n", portTry)
 		}
 	}
 	//This should never happen unless something went horribly wrong
@@ -120,7 +122,7 @@ func startSpace(db *gorm.DB, space Space) (error, *Space){
 	client := dockerHost.DockerClient
 	//Save it
 	db.Create(&space)
-	log.Infof("Select Host %u for space %u\n", space.HostID, space.ID)
+	log.Infof("Select Host %u for space %d\n", space.HostID, space.ID)
 
 	//======Container Config=====
 	var containerConfig docker.Config
@@ -164,8 +166,9 @@ func startSpace(db *gorm.DB, space Space) (error, *Space){
 	config.Context = context.Background()
 	//Create Container
 	c, err := client.CreateContainer(config)
-	if err == nil {
-		log.Fatalf("Failed to create container for space %u\n", space.ID)
+	if err != nil {
+		log.Criticalf("Failed to create container for space %d\n", space.ID)
+		log.Debug(err)
 		space.SpaceState = "Error Creating"
 		db.Save(space)
 		return err, nil
@@ -174,15 +177,15 @@ func startSpace(db *gorm.DB, space Space) (error, *Space){
 	space.ContainerID = c.ID
 	space.SpaceState = "Created"
 	db.Save(&space)
-	log.Infof("Created container for space %u: %s\n", space.ID, space.ContainerID)
+	log.Infof("Created container for space %d: %s\n", space.ID, space.ContainerID)
 
 	err = client.StartContainer(space.ContainerID, nil)
 	if err != nil {
-		log.Fatalf("Error starting container for space %u: %s\n", space.ID, space.ContainerID)
+		log.Criticalf("Error starting container for space %d: %s\n", space.ID, space.ContainerID)
 		space.SpaceState = "Error Starting"
 		db.Save(space)
 	} else {
-		log.Infof("Container for Space %u started: %s\n", space.ID, space.ContainerID)
+		log.Infof("Container for Space %d started: %s\n", space.ID, space.ContainerID)
 		space.SpaceState = "Running"
 		db.Save(space)
 	}

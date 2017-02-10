@@ -12,6 +12,7 @@ RUN service ssh stop
 RUN rm /etc/ssh/sshd_config
 COPY sshd_config /etc/ssh/
 COPY sshd_banner /etc/ssh/
+RUN service ssh start
 
 # Start SSH on boot
 RUN update-rc.d ssh defaults
@@ -23,7 +24,10 @@ ENV HOME /root
 # Define working directory.
 WORKDIR /root
 
+# Copy start.sh
+COPY start.sh /root/
+RUN chmod +x /root/start.sh
+
 RUN echo "root:Docker!" | chpasswd
 
-# Define default command.
-CMD ["bash"]
+ENTRYPOINT ["/root/start.sh"]

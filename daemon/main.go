@@ -16,7 +16,7 @@ import (
 
 type Space struct {
 	ID            uint `gorm:"primary_key" json:"-"`           // Primary Key and ID of container
-	PublicID      string `gorm:"index" json:"space_id"`        // Public UUID of this Space
+	PublicID      string `gorm:"index" json:"space_id,omitempty"`        // Public UUID of this Space
 	CreatedAt     time.Time `json:"-"`                         // Creation time
 	ArchiveDate   time.Time `json:"archive_date,omitempty"`    // This is the timestamp of when the space was archived. This is set if the space was archived.
 	Archived      bool `json:"archived,omitempty"`                       // This value is true if the space was deleted as a result of inactivity. All data is lost but metadata is preserved.
@@ -29,7 +29,7 @@ type Space struct {
 	ContainerID   string `json:"space_id,omitempty"`                     // ID of Docker container running this space
 	SpaceState    string `json:"space_state,omitempty"`                  // Running State of Space (running, paused, archived, error)
 	SSHKeyID      string `json: "ssh_key_id,omitempty"`                    // ID of the SSH Key that this container is using
-	PortLinks     []SpacePortLink `json: "port_links"`	   // Shows what external ports are bound to the ports on the space
+	PortLinks     []SpacePortLink `json: "port_links,omitempty"`	   // Shows what external ports are bound to the ports on the space
 }
 
 type SpacePortLink struct {
@@ -39,6 +39,7 @@ type SpacePortLink struct {
 	ExternalPort    uint16 `json:"external_port;unique_index:idx_externaladdress"`
 	ExternalAddress string `json: "external_address;unique_index:idx_externaladdress"`
 	DisplayAddress  string `json: "external_display_address"`
+	SpaceID         uint `json:"-"`
 }
 
 //Authentication Token

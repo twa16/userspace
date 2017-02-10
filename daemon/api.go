@@ -10,12 +10,14 @@ import (
 
 func postSpaceAPIHandler(w http.ResponseWriter, r *http.Request) {
 	var requestingUser User
+	requestingUser.ID = 216
 
 	var spaceRequest Space
 	jsonDecoder := json.NewDecoder(r.Body)
-	err := jsonDecoder.Decode(spaceRequest)
+	err := jsonDecoder.Decode(&spaceRequest)
 	//Ensure the request is valid JSON
 	if err != nil {
+		log.Debug(err)
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprint(w, "Invalid Request: Error Decoding JSON")
 		return
