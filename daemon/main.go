@@ -174,6 +174,15 @@ func Init() {
 	log.Info("Synchronizing Images with Hosts")
 	downloadDockerImages(database)
 
+	log.Info("Starting Space State Watcher")
+	go func(db *gorm.DB) {
+		log.Info("Space State Monitor Started")
+		for true {
+			updateSpaceStates(db)
+			time.Sleep(time.Second * 5)
+		}
+	}(db)
+
 	startAPI()
 }
 
@@ -212,4 +221,36 @@ func loadConfig() {
 		log.Infof("Loaded: %s as %s", key, viper.GetString(key))
 	}
 	//viper.SetDefault("k", "v")
+}
+
+func updateSpaceStates(db * gorm.DB)  {
+	spaces := []Space{}
+	db.Find(&spaces)
+
+	for _, space := range spaces {
+		//Get the host of the Space
+		hostID := space.HostID
+		host := getHostByID(hostID)
+		//If the host is disconnected the start should be changed
+		if !host.IsConnected {
+			log.Infof("Updated Space %s(5d) to state %s from %s\n",space.FriendlyName, space.ID, "host error", space.SpaceState)
+			log.Criticalf("Host %s(%d) in Error State\n", host.Name, host.ID)
+			space.SpaceState = "host error"
+			db.Save(space)
+			continue
+		}
+		//Get the client from the host
+		dClient := host.DockerClient
+		//Now let's grab the actual container
+		container, err := dClient.InspectContainer(space.ContainerID)
+		if err != nil {
+			log.Critical("Error updating space state: "+err.Error())
+		}
+		//Save the status
+		if container.State.Status != space.SpaceState {
+			log.Infof("Updated Space %s(5d) to state %s from %s\n",space.FriendlyName, space.ID, container.State.Status, space.SpaceState)
+			space.SpaceState = container.State.Status
+			db.Save(space)
+		}
+	}
 }
