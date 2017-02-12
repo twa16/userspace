@@ -16,7 +16,6 @@ import (
 
 type Space struct {
 	ID            uint `gorm:"primary_key" json:"-"`           // Primary Key and ID of container
-	PublicID      string `gorm:"index" json:"space_id,omitempty"`        // Public UUID of this Space
 	CreatedAt     time.Time `json:"-"`                         // Creation time
 	ArchiveDate   time.Time `json:"archive_date,omitempty"`    // This is the timestamp of when the space was archived. This is set if the space was archived.
 	Archived      bool `json:"archived,omitempty"`                       // This value is true if the space was deleted as a result of inactivity. All data is lost but metadata is preserved.

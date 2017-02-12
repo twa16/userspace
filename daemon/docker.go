@@ -201,7 +201,12 @@ func execInSpace(db *gorm.DB, space Space, command []string) (error){
 	execOptions.AttachStdin = false
 	execOptions.AttachStdout = false
 	execOptions.Tty = false
-	_, err := dockerHost.DockerClient.CreateExec(execOptions)
+	exec, err := dockerHost.DockerClient.CreateExec(execOptions)
+	if err != nil {
+		log.Warningf("Error Executing Command on Host %s: %s\n", dockerHost.Name, err.Error())
+		return err
+	}
+	err = dockerHost.DockerClient.StartExec(exec.ID, docker.StartExecOptions{})
 	if err != nil {
 		log.Warningf("Error Executing Command on Host %s: %s\n", dockerHost.Name, err.Error())
 		return err
