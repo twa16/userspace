@@ -1,3 +1,19 @@
+/*
+ * Copyright 2017 Manuel Gauto (github.com/twa16)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+*/
+
 package main
 
 import (
@@ -6,15 +22,49 @@ import (
 	"net/http"
 	"encoding/json"
 	"fmt"
+	auth "github.com/twa16/go-auth"
+	"errors"
 )
 
+const (
+	ADMIN_ADD_HOST = "admin.host.add"
+	ADMIN_READ_HOST = "admin.host.read"
+	ADMIN_UPDATE_HOST = "admin.host.update"
+	ADMIN_DELETE_HOST = "admin.host.delete"
+)
+
+func getUserFromRequest(r *http.Request) (*auth.User, error){
+	r.ParseForm()
+	if len(r.Header["X-Auth-Token"]) == 0 {
+		return nil, errors.New("No Token Provided")
+	}
+	token := r.Header["X-Auth-Token"][0]
+	sess, err := authProvider.CheckSessionKey(token)
+	if err != nil {
+		log.Critical("Error Checking Session: "+err.Error())
+		return nil, errors.New("Internal Server Error")
+	}
+	if sess.IsExpired {
+		return nil, errors.New("Session Expired")
+	}
+	user, err := authProvider.GetUserByID(sess.AuthSession.AuthUserID)
+	if err != nil {
+		log.Critical("Error Checking Session: "+err.Error())
+		return nil, errors.New("Internal Server Error")
+	}
+	return &user, nil
+}
+
 func postSpaceAPIHandler(w http.ResponseWriter, r *http.Request) {
-	var requestingUser User
-	requestingUser.ID = 216
+	user, err := getUserFromRequest(r)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprint(err.Error())
+	}
 
 	var spaceRequest Space
 	jsonDecoder := json.NewDecoder(r.Body)
-	err := jsonDecoder.Decode(&spaceRequest)
+	err = jsonDecoder.Decode(&spaceRequest)
 	//Ensure the request is valid JSON
 	if err != nil {
 		log.Debug(err)
@@ -28,15 +78,15 @@ func postSpaceAPIHandler(w http.ResponseWriter, r *http.Request) {
 	createdSpace.ImageID = spaceRequest.ImageID
 	createdSpace.SSHKeyID = spaceRequest.SSHKeyID
 	createdSpace.FriendlyName = spaceRequest.FriendlyName
-	createdSpace.OwnerID = requestingUser.UserID
+	createdSpace.OwnerID = user.Username
 
-	log.Infof("Got Space Creation Request from %s\n", requestingUser.UserID)
+	log.Infof("Got Space Creation Request from %s\n", user.Username)
 	//Check Quota
-	isUnderQuota := checkQuotaRestrictions(requestingUser.UserID)
+	isUnderQuota := checkQuotaRestrictions(user.Username)
 	if !isUnderQuota {
 		w.WriteHeader(http.StatusForbidden)
-		fmt.Fprintf(w, "Quota Exceeded")
-		log.Warningf("Request from %s because of quota restrictions\n", requestingUser.UserID)
+		fmt.Fprint(w, "Quota Exceeded")
+		log.Warningf("Request from %s because of quota restrictions\n", user.Username)
 		return
 	}
 
@@ -57,13 +107,13 @@ func postDockerHostAPIHandler(w http.ResponseWriter, r *http.Request) {
 	//Call the connection methods
 	addAndConnectToDockerInstance(database, &dockerHost)
 
-	fmt.Fprintf(w, "OK")
+	fmt.Fprint(w, "OK")
 	defer r.Body.Close()
 }
 
 //pingAPIHandler Handles the ping test endpoint
 func pingAPIHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "PONG")
+	fmt.Fprint(w, "PONG")
 }
 
 //getImagesAPIHandler Get images
@@ -71,15 +121,26 @@ func getImagesAPIHandler(w http.ResponseWriter, r *http.Request) {
 	images := []SpaceImage{}
 	database.Find(&images)
 	jsonBytes, _ := json.Marshal(images)
-	fmt.Fprintf(w, string(jsonBytes))
+	fmt.Fprint(w, string(jsonBytes))
 }
 
+func getCASHandler(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	fmt.Println(r.FormValue("ticket"))
+}
+
+var authProvider auth.AuthProvider
 func startAPI() {
+	authProvider.Database = database
+	authProvider.SessionExpireTimeSeconds = 60 * 30
+	authProvider.Startup()
+
 	mux := goji.NewMux()
 	mux.HandleFunc(pat.Post("/api/v1/spaces"), postSpaceAPIHandler)
 	mux.HandleFunc(pat.Post("/api/v1/hosts"), postDockerHostAPIHandler)
 	mux.HandleFunc(pat.Get("/api/v1/images"), getImagesAPIHandler)
 	mux.HandleFunc(pat.Get("/api/v1/ping"), pingAPIHandler)
+	mux.HandleFunc(pat.Get("/caslogin"), getCASHandler)
 	log.Info("Starting API Mux...")
 	log.Fatal(http.ListenAndServe(":8080", mux))
 }

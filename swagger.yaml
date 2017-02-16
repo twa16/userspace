@@ -307,3 +307,23 @@ definitions:
           \ Docker host"
         default: false
     description: "Struct representing a docker instance to use for containers"
+  OrchestratorInfo:
+    type: "object"
+    required:
+    - "image_id"
+    - "name"
+    properties:
+      supports_cas:
+        type: "boolean"
+        description: "True if the server supports CAS authentication"
+      cas_hostname:
+        type: "string"
+        description: "URL base for the CAS server"
+      allows_local_auth:
+        type: "boolean"
+        description: "True if the server allows local accounts"
+      allows_local_registration:
+        type: "boolean"
+        description: "True if the server allows local registration"
+    description: "This is the struct the represents what a user should send to the\
+      \ server to request a new space."

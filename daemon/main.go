@@ -1,8 +1,23 @@
+/*
+ * Copyright 2017 Manuel Gauto (github.com/twa16)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+*/
+
 package main
 
 import (
 	"time"
-	"github.com/go-openapi/strfmt"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"github.com/op/go-logging"
@@ -41,15 +56,6 @@ type SpacePortLink struct {
 	SpaceID         uint `json:"-"`
 }
 
-//Authentication Token
-type AuthenticationToken struct {
-	ID             uint `gorm:"primary_key" json:"-"` //Primary Key
-	CreatedAt      time.Time `json:"-"`               //Creation time
-	ExpirationTime int64 `json:"expiration_time"`     // Unix time representation of when this token will be inactivated.
-	Token          string `json:"token" gorm:"index"` // Token that is to be used in requests.
-	UserID         string `json:"user_id"`            // ID of user this token represents
-}
-
 // SpaceImage
 type SpaceImage struct {
 	ID          uint `gorm:"primary_key" json:"image_id"`     //Primary Key
@@ -84,17 +90,6 @@ type UserPublicKey struct {
 	PublicKey string `json:"public_key`             // Public key
 }
 
-// User User Object
-type User struct {
-	ID                        uint `gorm:"primary_key" json:"-"`                    //Primary Key
-	CreatedAt                 time.Time `json:"-"`                                  //Creation Time
-	UpdatedAt                 time.Time `json:"-"`                                  //Last Update time
-	AuthenticationBackendLink string `json:"authentication_backend_link,omitempty"` // This is the field that links the user to the backend authentication service. In the initial system this stores the "netid" of the user that is used by CAS and LDAP.
-	ExternallyAuthentication  bool `json:"externally_authentication"`               // If true, this user is authenticated against an external service which means there will be an authentication_backend_link but not a password.
-	LastLoginTimestamp        strfmt.Date `json:"last_login_timestamp,omitempty"`   // The last time the user logged in. This is blank if the user has never logged in.
-	Password                  string `json:"password,omitempty"`                    // BCrypt hash of the user password. This is only set if the user is not externally authenticated.
-	UserID                    string `json:"user_id"`                              // Unique ID of the user
-}
 
 //DockerInstance Struct representing a docker instance to use for containers
 type DockerInstance struct {
@@ -156,10 +151,8 @@ func Init() {
 	log.Info("Migrating Models...")
 	database.AutoMigrate(&Space{})
 	database.AutoMigrate(&SpacePortLink{})
-	database.AutoMigrate(&AuthenticationToken{})
 	database.AutoMigrate(&SpaceImage{})
 	database.AutoMigrate(&SpaceUsageReport{})
-	database.AutoMigrate(&User{})
 	database.AutoMigrate(&DockerInstance{})
 	database.AutoMigrate(&UserPublicKey{})
 	log.Info("Migration Complete.")
