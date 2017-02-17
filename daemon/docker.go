@@ -14,7 +14,7 @@
  * limitations under the License.
 */
 
-package main
+package userspaced
 
 import (
 	"github.com/fsouza/go-dockerclient"

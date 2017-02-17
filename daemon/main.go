@@ -14,7 +14,7 @@
  * limitations under the License.
 */
 
-package main
+package userspaced
 
 import (
 	"time"
@@ -28,6 +28,14 @@ import (
 
 //This is where I found the bug with Gogland haha (GO-3377)
 //region Model Structs
+
+type OrchestratorInfo struct {
+	SupportsCAS bool `json:"supports_cas"`
+	CASURL string `json:"cas_url"`
+	AllowsLocalLogin bool `json:"supports_local_login"`
+	AllowsRegistration bool `json:"allows_registration"`
+}
+
 
 type Space struct {
 	ID            uint `gorm:"primary_key" json:"-"`           // Primary Key and ID of container
@@ -113,6 +121,8 @@ type DockerInstance struct {
 //region Internal Structs
 
 //endregion
+
+
 
 //This should only be 4 chars or you have to change our fancy banner
 var VERSION = "0.1A"

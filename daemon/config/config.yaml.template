@@ -1,1 +1,5 @@
 PullStarterImages: true
+SupportCAS: true
+CASURL: https://cas.srct.gmu.edu
+AllowLocalLogin: false
+AllowRegistration: false

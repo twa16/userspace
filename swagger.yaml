@@ -316,7 +316,7 @@ definitions:
       supports_cas:
         type: "boolean"
         description: "True if the server supports CAS authentication"
-      cas_hostname:
+      cas_url:
         type: "string"
         description: "URL base for the CAS server"
       allows_local_auth:

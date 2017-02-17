@@ -14,7 +14,7 @@
  * limitations under the License.
 */
 
-package main
+package userspaced
 
 import (
 	"goji.io"
@@ -24,6 +24,7 @@ import (
 	"fmt"
 	auth "github.com/twa16/go-auth"
 	"errors"
+	"github.com/spf13/viper"
 )
 
 const (
@@ -32,6 +33,7 @@ const (
 	ADMIN_UPDATE_HOST = "admin.host.update"
 	ADMIN_DELETE_HOST = "admin.host.delete"
 )
+
 
 func getUserFromRequest(r *http.Request) (*auth.User, error){
 	r.ParseForm()
@@ -55,11 +57,24 @@ func getUserFromRequest(r *http.Request) (*auth.User, error){
 	return &user, nil
 }
 
+func getOrchestratorInfoAPIHandler(w http.ResponseWriter, r *http.Request) {
+	//It is probably faster to do this just once. We will cross that bridge when we get there
+	//I honestly forgot I could initialize structs like this.
+	orcInfo := OrchestratorInfo{
+		SupportsCAS: viper.GetBool("SupportCAS"),
+		CASURL: viper.GetString("CASURL"),
+		AllowsRegistration: viper.GetBool("AllowRegistration"),
+		AllowsLocalLogin: viper.GetBool("AllowLocalLogin"),
+	}
+	jsonBytes, _ := json.Marshal(orcInfo)
+	fmt.Fprint(w, string(jsonBytes))
+}
+
 func postSpaceAPIHandler(w http.ResponseWriter, r *http.Request) {
 	user, err := getUserFromRequest(r)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprint(err.Error())
+		fmt.Fprint(w, err.Error())
 	}
 
 	var spaceRequest Space
@@ -141,6 +156,7 @@ func startAPI() {
 	mux.HandleFunc(pat.Get("/api/v1/images"), getImagesAPIHandler)
 	mux.HandleFunc(pat.Get("/api/v1/ping"), pingAPIHandler)
 	mux.HandleFunc(pat.Get("/caslogin"), getCASHandler)
+	mux.HandleFunc(pat.Get("/orchestratorinfo"), getOrchestratorInfoAPIHandler)
 	log.Info("Starting API Mux...")
 	log.Fatal(http.ListenAndServe(":8080", mux))
 }
