@@ -167,6 +167,7 @@ func Init() {
 	database.AutoMigrate(&UserPublicKey{})
 	log.Info("Migration Complete.")
 
+	//Connect to docker hosts
 	initDockerHosts(database)
 
 	//Check if we need starter images

@@ -3,3 +3,5 @@ SupportCAS: true
 CASURL: https://cas.srct.gmu.edu
 AllowLocalLogin: false
 AllowRegistration: false
+ApiHttpsKey: ./api.key
+ApiHttpsCertificate: ./api.cert

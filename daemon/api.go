@@ -25,6 +25,7 @@ import (
 	auth "github.com/twa16/go-auth"
 	"errors"
 	"github.com/spf13/viper"
+	"os"
 )
 
 const (
@@ -150,6 +151,36 @@ func startAPI() {
 	authProvider.SessionExpireTimeSeconds = 60 * 30
 	authProvider.Startup()
 
+	log.Info("Ensuring HTTPS Certificates Exist")
+	apiKeyFile := viper.GetString("ApiHttpsKey")
+	apiCertFile := viper.GetString("ApiHttpsCertificate")
+	log.Debugf("Using Key File: %s\n", apiKeyFile)
+	log.Debugf("Using Certificate File: %s\n", apiCertFile)
+	//Check to see if cert exists
+	_, errKey := os.Stat(apiKeyFile)
+	_, errCert := os.Stat(apiCertFile)
+	if os.IsNotExist(errKey) || os.IsNotExist(errCert) {
+		log.Warning("Generating HTTPS Certificate for API")
+		os.Remove(apiKeyFile)
+		os.Remove(apiCertFile)
+		privateKey, certificate, err := CreateSelfSignedCertificate(viper.GetString("ApiHost"))
+		if err != nil {
+			log.Fatalf("Error generating API Certificates: %s\n", err.Error())
+			panic(err)
+		}
+		err = WriteCertificateToFile(certificate, apiCertFile)
+		if err != nil {
+			log.Fatalf("Error saving certificate: %s\n", err.Error())
+			panic(err)
+		}
+		err = WritePrivateKeyToFile(privateKey, apiKeyFile)
+		if err != nil {
+			log.Fatalf("Error saving private key: %s\n", err.Error())
+			panic(err)
+		}
+		log.Info("API Certificate Generation Complete.")
+	}
+
 	mux := goji.NewMux()
 	mux.HandleFunc(pat.Post("/api/v1/spaces"), postSpaceAPIHandler)
 	mux.HandleFunc(pat.Post("/api/v1/hosts"), postDockerHostAPIHandler)
@@ -158,7 +189,7 @@ func startAPI() {
 	mux.HandleFunc(pat.Get("/caslogin"), getCASHandler)
 	mux.HandleFunc(pat.Get("/orchestratorinfo"), getOrchestratorInfoAPIHandler)
 	log.Info("Starting API Mux...")
-	log.Fatal(http.ListenAndServe(":8080", mux))
+	log.Fatal(http.ListenAndServeTLS(":8080", apiCertFile, apiKeyFile, mux))
 }
 
 //checkQuotaRestrictions Returns true if the user has not yet hit their quota on Spaces
