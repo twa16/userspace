@@ -153,7 +153,7 @@ func getCASHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if valResp.IsValid {
-		log.Infof("Authentication %s using CAS\n", valResp.Username)
+		log.Infof("Authenticated %s using CAS\n", valResp.Username)
 		user, err := authProvider.GetUser(valResp.Username)
 		if err != nil {
 			//If the internal user does not exist, make it
@@ -177,7 +177,7 @@ func getCASHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Critical("Error Generating Session: "+err.Error())
 			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprint("Internal Server Error")
+			fmt.Fprint(w, "Internal Server Error")
 			return
 		}
 		//JSONify and send our response
@@ -193,9 +193,13 @@ func getCASHandler(w http.ResponseWriter, r *http.Request) {
 
 var authProvider auth.AuthProvider
 func startAPI() {
+	//Start auth provider
 	authProvider.Database = database
 	authProvider.SessionExpireTimeSeconds = 60 * 30
 	authProvider.Startup()
+
+	//Ensure admin user exists
+	ensureAdminUser()
 
 	log.Info("Ensuring HTTPS Certificates Exist")
 	apiKeyFile := viper.GetString("ApiHttpsKey")
@@ -249,6 +253,18 @@ func startAPI() {
 	srv.Shutdown(ctx)
 
 	log.Info("Server gracefully stopped")
+}
+
+func ensureAdminUser() {
+	/*adminUser := auth.User{
+		FirstName: "Default",
+		LastName: "Administrator",
+		Username: "admin",
+		Permissions: []auth.Permission{
+			{Permission: "*.*"},
+		},
+	}*/
+
 }
 
 //checkQuotaRestrictions Returns true if the user has not yet hit their quota on Spaces
