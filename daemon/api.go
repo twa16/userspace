@@ -26,6 +26,9 @@ import (
 	"errors"
 	"github.com/spf13/viper"
 	"os"
+	"os/signal"
+	"context"
+	"time"
 )
 
 const (
@@ -34,7 +37,6 @@ const (
 	ADMIN_UPDATE_HOST = "admin.host.update"
 	ADMIN_DELETE_HOST = "admin.host.delete"
 )
-
 
 func getUserFromRequest(r *http.Request) (*auth.User, error){
 	r.ParseForm()
@@ -62,7 +64,7 @@ func getOrchestratorInfoAPIHandler(w http.ResponseWriter, r *http.Request) {
 	//It is probably faster to do this just once. We will cross that bridge when we get there
 	//I honestly forgot I could initialize structs like this.
 	orcInfo := OrchestratorInfo{
-		SupportsCAS: viper.GetBool("SupportCAS"),
+		SupportsCAS: viper.GetBool("SupportsCAS"),
 		CASURL: viper.GetString("CASURL"),
 		AllowsRegistration: viper.GetBool("AllowRegistration"),
 		AllowsLocalLogin: viper.GetBool("AllowLocalLogin"),
@@ -142,7 +144,51 @@ func getImagesAPIHandler(w http.ResponseWriter, r *http.Request) {
 
 func getCASHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
-	fmt.Println(r.FormValue("ticket"))
+	ticket := r.FormValue("ticket")
+	valResp, err := casServer.ValidateTicket(ticket)
+	if err != nil {
+		log.Warning("Error handling CAS login: "+err.Error())
+		w.WriteHeader(http.StatusForbidden)
+		fmt.Fprint(w, "Error")
+		return
+	}
+	if valResp.IsValid {
+		log.Infof("Authentication %s using CAS\n", valResp.Username)
+		user, err := authProvider.GetUser(valResp.Username)
+		if err != nil {
+			//If the internal user does not exist, make it
+			if err.Error() == "record not found" {
+				var user auth.User
+				user.Username = valResp.Username
+				user.Permissions = []auth.Permission{
+					{Permission: "user.*", },
+				}
+				authProvider.CreateUser(user)
+
+			} else {
+				log.Warning("Error getting user for CAS login: " + err.Error())
+				w.WriteHeader(http.StatusForbidden)
+				fmt.Fprint(w, "Error")
+				return
+			}
+		}
+		//Generate the Session
+		session, err := authProvider.GenerateSessionKey(user.ID, false)
+		if err != nil {
+			log.Critical("Error Generating Session: "+err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprint("Internal Server Error")
+			return
+		}
+		//JSONify and send our response
+		jsonBytes, _ := json.Marshal(session)
+		fmt.Fprint(w, string(jsonBytes))
+		return
+	} else {
+		fmt.Println("Invalid Ticket")
+		w.WriteHeader(http.StatusForbidden)
+		fmt.Fprint(w, "Error")
+	}
 }
 
 var authProvider auth.AuthProvider
@@ -189,7 +235,20 @@ func startAPI() {
 	mux.HandleFunc(pat.Get("/caslogin"), getCASHandler)
 	mux.HandleFunc(pat.Get("/orchestratorinfo"), getOrchestratorInfoAPIHandler)
 	log.Info("Starting API Mux...")
-	log.Fatal(http.ListenAndServeTLS(":8080", apiCertFile, apiKeyFile, mux))
+	srv := &http.Server{Addr: ":8080", Handler: mux}
+	srv.ListenAndServeTLS(apiCertFile, apiKeyFile)
+
+	// subscribe to SIGINT signals
+	stopChan := make(chan os.Signal)
+	signal.Notify(stopChan, os.Interrupt)
+	<-stopChan // wait for SIGINT
+	log.Info("Shutting down server...")
+
+	// shut down gracefully, but wait no longer than 5 seconds before halting
+	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+	srv.Shutdown(ctx)
+
+	log.Info("Server gracefully stopped")
 }
 
 //checkQuotaRestrictions Returns true if the user has not yet hit their quota on Spaces

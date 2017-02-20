@@ -177,6 +177,9 @@ func Init() {
 	log.Info("Synchronizing Images with Hosts")
 	downloadDockerImages(database)
 
+	log.Info("Initiating CAS Handler")
+	initCAS()
+
 	log.Info("Starting Space State Watcher")
 	go func(db *gorm.DB) {
 		log.Info("Space State Monitor Started")
