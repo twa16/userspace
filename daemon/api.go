@@ -74,10 +74,20 @@ func getOrchestratorInfoAPIHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func postSpaceAPIHandler(w http.ResponseWriter, r *http.Request) {
+	//Get user and error out if it didn't work
 	user, err := getUserFromRequest(r)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(http.StatusUnauthorized)
 		fmt.Fprint(w, err.Error())
+		return
+	}
+
+	//Check permission
+	hasPerm, err := authProvider.CheckPermission(user.ID, "user.space.create")
+	if err != nil || !hasPerm {
+		w.WriteHeader(http.StatusUnauthorized)
+		fmt.Fprint(w, err.Error())
+		return
 	}
 
 	var spaceRequest Space
@@ -96,7 +106,7 @@ func postSpaceAPIHandler(w http.ResponseWriter, r *http.Request) {
 	createdSpace.ImageID = spaceRequest.ImageID
 	createdSpace.SSHKeyID = spaceRequest.SSHKeyID
 	createdSpace.FriendlyName = spaceRequest.FriendlyName
-	createdSpace.OwnerID = user.Username
+	createdSpace.OwnerID = user.ID
 
 	log.Infof("Got Space Creation Request from %s\n", user.Username)
 	//Check Quota
@@ -111,6 +121,27 @@ func postSpaceAPIHandler(w http.ResponseWriter, r *http.Request) {
 	go startSpace(database, createdSpace)
 
 	fmt.Fprint(w, "Space creation started")
+}
+
+func getSpacesAPIHandler(w http.ResponseWriter, r *http.Request) {
+	//Get user and error out if it didn't work
+	user, err := getUserFromRequest(r)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		fmt.Fprint(w, err.Error())
+		return
+	}
+
+	var spaces []Space
+	err = database.Where("OwnerID", user.ID).Find(&spaces).Error
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(w, err.Error())
+		return
+	}
+	jsonBytes, _ := json.Marshal(spaces)
+	fmt.Fprint(w, string(jsonBytes))
+
 }
 
 //postDockerHostAPIHandler Handles the requests for adding a new docker host
@@ -233,6 +264,7 @@ func startAPI() {
 
 	mux := goji.NewMux()
 	mux.HandleFunc(pat.Post("/api/v1/spaces"), postSpaceAPIHandler)
+	mux.HandleFunc(pat.Get("/api/v1/spaces"), getSpacesAPIHandler)
 	mux.HandleFunc(pat.Post("/api/v1/hosts"), postDockerHostAPIHandler)
 	mux.HandleFunc(pat.Get("/api/v1/images"), getImagesAPIHandler)
 	mux.HandleFunc(pat.Get("/api/v1/ping"), pingAPIHandler)

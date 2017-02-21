@@ -4,7 +4,7 @@
 Userspace is a project that was envisioned by Manuel Gauto 
 in 2014 during a meeting of George Mason University's Student Run Computing and Technology (http://srct.gmu.edu).
 The idea was to create a project that allowed members to spin up small VMs that they could do
-scratch work on for their project. The original project called for VMs but not that Docker has
+scratch work on for their project. The original project called for VMs but now that Docker has
 matured, it is a much better fit.
 
 ### Goals

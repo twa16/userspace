@@ -45,7 +45,7 @@ type Space struct {
 	ImageID       string `json:"image_id,omitempty"`                     // This is the image that is used by the container that contains the space. This is a link to SpaceImage.
 	LastNetAccess string `json:"last_net_access,omitempty"`    // The time this space was last accessed over the network but not SSH. This may be empty if the space was never accessed.
 	LastSSHAccess time.Time `json:"last_ssh_access,omitempty"` // The time this space was last accessed over SSH. This may be empty if the space was never accessed.
-	OwnerID       string `json:"owner_id,omitempty"`                    // Unique ID of the user that owns the Space. This is a link to User.
+	OwnerID       uint `json:"owner_id,omitempty"`                    // Unique ID of the user that owns the Space. This is a link to User.
 	HostID        uint `json:"host_id,omitempty"`                        // ID of the host that contains this space
 	FriendlyName  string `json:"space_name,omitempty"`                   // Friendly name of this space
 	ContainerID   string `json:"space_id,omitempty"`                     // ID of Docker container running this space
@@ -93,7 +93,7 @@ type UserPublicKey struct {
 	ID        uint `gorm:"primary_key" json:"-"`    // Primary Key
 	PublicID  string `gorm:"index" json:"space_id"` // Public UUID of this Key
 	CreatedAt time.Time `json:"-"`                  // Creation time
-	OwnerID   string `json:"user_id"`               // ID of user tha owns this key
+	OwnerID   uint `json:"user_id"`               // ID of user tha owns this key
 	Name      string `json:"name"`                  // Friendly name of this key
 	PublicKey string `json:"public_key`             // Public key
 }
