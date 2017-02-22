@@ -12,18 +12,18 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 package userspaced
 
 import (
+	"context"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/jinzhu/gorm"
-	"sync"
-	"context"
-	"math/rand"
 	"github.com/pkg/errors"
+	"math/rand"
 	"strconv"
+	"sync"
 )
 
 //Contains running instances of docker hosts
@@ -44,6 +44,7 @@ func initDockerHosts(db *gorm.DB) {
 }
 
 var dockerInstanceSliceLock sync.Mutex
+
 func addAndConnectToDockerInstance(db *gorm.DB, instance *DockerInstance) (*DockerInstance, error) {
 	//It is technically possible for two hosts to be added at once, so let's lock the slice
 	dockerInstanceSliceLock.Lock()
@@ -126,7 +127,7 @@ func selectLeastOccupiedHost(db *gorm.DB) *DockerInstance {
 	return DockerInstances[0]
 }
 
-func startSpace(db *gorm.DB, space Space) (error, *Space){
+func startSpace(db *gorm.DB, space Space) (error, *Space) {
 	//======Initialization Steps=====
 	//Check if the requested image exists
 	if !checkImageExists(db, space.ImageID) {
@@ -208,7 +209,7 @@ func startSpace(db *gorm.DB, space Space) (error, *Space){
 	return nil, &space
 }
 
-func execInSpace(db *gorm.DB, space Space, command []string) (error){
+func execInSpace(db *gorm.DB, space Space, command []string) error {
 	dockerHost := getHostByID(space.HostID)
 
 	execOptions := docker.CreateExecOptions{}
@@ -254,7 +255,7 @@ func startDockerClient(instance *DockerInstance) (*docker.Client, error) {
 	instance.DockerClient = cli
 
 	env, _ := cli.Version()
-	log.Info("Connection Suceeded! API Version: "+env.Get("ApiVersion"))
+	log.Info("Connection Suceeded! API Version: " + env.Get("ApiVersion"))
 	return cli, err
 }
 

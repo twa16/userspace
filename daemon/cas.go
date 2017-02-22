@@ -1,8 +1,8 @@
 package userspaced
 
 import (
-	"github.com/twa16/go-cas/client"
 	"github.com/spf13/viper"
+	"github.com/twa16/go-cas/client"
 )
 
 var casServer gocas.CASServerConfig

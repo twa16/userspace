@@ -12,108 +12,106 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 package userspaced
 
 import (
-	"time"
+	"github.com/fsouza/go-dockerclient"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"github.com/op/go-logging"
-	"os"
 	"github.com/spf13/viper"
-	"github.com/fsouza/go-dockerclient"
+	"os"
+	"time"
 )
 
 //This is where I found the bug with Gogland haha (GO-3377)
 //region Model Structs
 
 type OrchestratorInfo struct {
-	SupportsCAS bool `json:"supports_cas"`
-	CASURL string `json:"cas_url"`
-	AllowsLocalLogin bool `json:"supports_local_login"`
-	AllowsRegistration bool `json:"allows_registration"`
+	SupportsCAS        bool   `json:"supports_cas"`
+	CASURL             string `json:"cas_url"`
+	AllowsLocalLogin   bool   `json:"supports_local_login"`
+	AllowsRegistration bool   `json:"allows_registration"`
 }
 
-
 type Space struct {
-	ID            uint `gorm:"primary_key" json:"-"`           // Primary Key and ID of container
-	CreatedAt     time.Time `json:"-"`                         // Creation time
-	ArchiveDate   time.Time `json:"archive_date,omitempty"`    // This is the timestamp of when the space was archived. This is set if the space was archived.
-	Archived      bool `json:"archived,omitempty"`                       // This value is true if the space was deleted as a result of inactivity. All data is lost but metadata is preserved.
-	ImageID       string `json:"image_id,omitempty"`                     // This is the image that is used by the container that contains the space. This is a link to SpaceImage.
-	LastNetAccess string `json:"last_net_access,omitempty"`    // The time this space was last accessed over the network but not SSH. This may be empty if the space was never accessed.
-	LastSSHAccess time.Time `json:"last_ssh_access,omitempty"` // The time this space was last accessed over SSH. This may be empty if the space was never accessed.
-	OwnerID       uint `json:"owner_id,omitempty"`                    // Unique ID of the user that owns the Space. This is a link to User.
-	HostID        uint `json:"host_id,omitempty"`                        // ID of the host that contains this space
-	FriendlyName  string `json:"space_name,omitempty"`                   // Friendly name of this space
-	ContainerID   string `json:"space_id,omitempty"`                     // ID of Docker container running this space
-	SpaceState    string `json:"space_state,omitempty"`                  // Running State of Space (running, paused, archived, error)
-	SSHKeyID      string `json: "ssh_key_id,omitempty"`                    // ID of the SSH Key that this container is using
-	PortLinks     []SpacePortLink `json: "port_links,omitempty"`	   // Shows what external ports are bound to the ports on the space
+	ID            uint            `gorm:"primary_key" json:"-"`      // Primary Key and ID of container
+	CreatedAt     time.Time       `json:"-"`                         // Creation time
+	ArchiveDate   time.Time       `json:"archive_date,omitempty"`    // This is the timestamp of when the space was archived. This is set if the space was archived.
+	Archived      bool            `json:"archived,omitempty"`        // This value is true if the space was deleted as a result of inactivity. All data is lost but metadata is preserved.
+	ImageID       string          `json:"image_id,omitempty"`        // This is the image that is used by the container that contains the space. This is a link to SpaceImage.
+	LastNetAccess string          `json:"last_net_access,omitempty"` // The time this space was last accessed over the network but not SSH. This may be empty if the space was never accessed.
+	LastSSHAccess time.Time       `json:"last_ssh_access,omitempty"` // The time this space was last accessed over SSH. This may be empty if the space was never accessed.
+	OwnerID       uint            `json:"owner_id,omitempty"`        // Unique ID of the user that owns the Space. This is a link to User.
+	HostID        uint            `json:"host_id,omitempty"`         // ID of the host that contains this space
+	FriendlyName  string          `json:"space_name,omitempty"`      // Friendly name of this space
+	ContainerID   string          `json:"space_id,omitempty"`        // ID of Docker container running this space
+	SpaceState    string          `json:"space_state,omitempty"`     // Running State of Space (running, paused, archived, error)
+	SSHKeyID      string          `json: "ssh_key_id,omitempty"`     // ID of the SSH Key that this container is using
+	PortLinks     []SpacePortLink `json: "port_links,omitempty"`     // Shows what external ports are bound to the ports on the space
 }
 
 type SpacePortLink struct {
-	ID              uint `gorm:"primary_key" json:"-"` // Primary Key and ID of container
+	ID              uint      `gorm:"primary_key" json:"-"` // Primary Key and ID of container
 	CreatedAt       time.Time `json:"-"`
-	SpacePort       uint16 `json:"space_port"`
-	ExternalPort    uint16 `json:"external_port;unique_index:idx_externaladdress"`
-	ExternalAddress string `json: "external_address;unique_index:idx_externaladdress"`
-	DisplayAddress  string `json: "external_display_address"`
-	SpaceID         uint `json:"-"`
+	SpacePort       uint16    `json:"space_port"`
+	ExternalPort    uint16    `json:"external_port;unique_index:idx_externaladdress"`
+	ExternalAddress string    `json: "external_address;unique_index:idx_externaladdress"`
+	DisplayAddress  string    `json: "external_display_address"`
+	SpaceID         uint      `json:"-"`
 }
 
 // SpaceImage
 type SpaceImage struct {
-	ID          uint `gorm:"primary_key" json:"image_id"`     //Primary Key
-	CreatedAt   time.Time `json:"-"`                   //Creation time
-	Active      bool `json:"active"`                   // If this is set to false, the user cannot use the image and is only kept to avoid breaking older spaces.
-	Description string `json:"description"`           // Friendly description of this image.
-	DockerImage string `json:"docker_image"`          // This is the full URI of the docker image.
-	DockerImageTag    string `json:"docker_image_tag"`	  // Tag to use when retrieving the image
-	Name        string `json:"name"`                  // Friendly name of this image.
+	ID             uint      `gorm:"primary_key" json:"image_id"` //Primary Key
+	CreatedAt      time.Time `json:"-"`                           //Creation time
+	Active         bool      `json:"active"`                      // If this is set to false, the user cannot use the image and is only kept to avoid breaking older spaces.
+	Description    string    `json:"description"`                 // Friendly description of this image.
+	DockerImage    string    `json:"docker_image"`                // This is the full URI of the docker image.
+	DockerImageTag string    `json:"docker_image_tag"`            // Tag to use when retrieving the image
+	Name           string    `json:"name"`                        // Friendly name of this image.
 }
 
 // SpaceUsageReport This object stores the metrics for a space at a specific point in time. The reports are not reset each time therefore the difference between two reports will show the increase in the time between the reports.
 type SpaceUsageReport struct {
-	ID              uint `gorm:"primary_key" json:"-"` //Primary Key
-	CreatedAt       time.Time `json:"-"`               //Creation time
-	ContainerID     string `json:"container_id"`       // ID of the container
-	DiskUsageBytes  int64 `json:"disk_usage_bytes"`    // Number of bytes that the space is taking up on disk.
-	NetworkInBytes  int64 `json:"network_in_bytes"`    // Number of bytes that the space has received over the network. This does include SSH.
-	NetworkOutBytes int64 `json:"network_out_bytes"`   // Number of bytes that the space has sent over the network. This includes SSH.
-	ReportID        int64 `json:"report_id"`           // ID of the report
-	SSHSessionCount int64 `json:"ssh_session_count"`   // This is the number of SSH sessions the space has received.
-	Timestamp       time.Time `json:"timestamp"`       // Time this data was recorded
+	ID              uint      `gorm:"primary_key" json:"-"` //Primary Key
+	CreatedAt       time.Time `json:"-"`                    //Creation time
+	ContainerID     string    `json:"container_id"`         // ID of the container
+	DiskUsageBytes  int64     `json:"disk_usage_bytes"`     // Number of bytes that the space is taking up on disk.
+	NetworkInBytes  int64     `json:"network_in_bytes"`     // Number of bytes that the space has received over the network. This does include SSH.
+	NetworkOutBytes int64     `json:"network_out_bytes"`    // Number of bytes that the space has sent over the network. This includes SSH.
+	ReportID        int64     `json:"report_id"`            // ID of the report
+	SSHSessionCount int64     `json:"ssh_session_count"`    // This is the number of SSH sessions the space has received.
+	Timestamp       time.Time `json:"timestamp"`            // Time this data was recorded
 }
 
 //UserPublicKey Represents a stored user public ssh key
 type UserPublicKey struct {
-	ID        uint `gorm:"primary_key" json:"-"`    // Primary Key
-	PublicID  string `gorm:"index" json:"space_id"` // Public UUID of this Key
-	CreatedAt time.Time `json:"-"`                  // Creation time
-	OwnerID   uint `json:"user_id"`               // ID of user tha owns this key
-	Name      string `json:"name"`                  // Friendly name of this key
-	PublicKey string `json:"public_key`             // Public key
+	ID        uint      `gorm:"primary_key" json:"-"`  // Primary Key
+	PublicID  string    `gorm:"index" json:"space_id"` // Public UUID of this Key
+	CreatedAt time.Time `json:"-"`                     // Creation time
+	OwnerID   uint      `json:"user_id"`               // ID of user tha owns this key
+	Name      string    `json:"name"`                  // Friendly name of this key
+	PublicKey string    `json:"public_key`             // Public key
 }
-
 
 //DockerInstance Struct representing a docker instance to use for containers
 type DockerInstance struct {
-	ID                     uint `gorm:"primary_key" json:"-"`       //Primary Key
-	CreatedAt              time.Time `json:"-"`                     //Creation Time
-	UpdatedAt              time.Time `json:"-"`                     //Last Update time
-	Name                   string `json:"name"`                     //Friendly name of this docker instance
-	ConnectionType         string `json:"connection_type"`          //Type of connection to use when connecting a docker instance (local,tls)
-	Endpoint               string `json:"sock_path"`                //Path to the sock if the connection type is local or remote address if the type is tls
-	CaCertPath             string `json:"ca_cert_path"`             //Path to the CA certificate if the connection type is tls
-	ClientCertPath         string `json:"client_cert_path"`         //Path to the Client certificate if the connection type is tls
-	ClientKeyPath          string `json:"client_key_path"`          //Path to the Client key if the connection type is tls
-	IsConnected            bool   `json:"is_connected"`             //This is true if the daemon is reporting it is connected to the Docker host
-	DockerClient           *docker.Client `gorm:"-" json:"-"`       //Connection to the Docker instance
-	ExternalAddress        string `json:"external_address"`         //External address that the spaces will use
-	ExternalDisplayAddress string `json:"external_display_address"` //External addresses that users will see
+	ID                     uint           `gorm:"primary_key" json:"-"`     //Primary Key
+	CreatedAt              time.Time      `json:"-"`                        //Creation Time
+	UpdatedAt              time.Time      `json:"-"`                        //Last Update time
+	Name                   string         `json:"name"`                     //Friendly name of this docker instance
+	ConnectionType         string         `json:"connection_type"`          //Type of connection to use when connecting a docker instance (local,tls)
+	Endpoint               string         `json:"sock_path"`                //Path to the sock if the connection type is local or remote address if the type is tls
+	CaCertPath             string         `json:"ca_cert_path"`             //Path to the CA certificate if the connection type is tls
+	ClientCertPath         string         `json:"client_cert_path"`         //Path to the Client certificate if the connection type is tls
+	ClientKeyPath          string         `json:"client_key_path"`          //Path to the Client key if the connection type is tls
+	IsConnected            bool           `json:"is_connected"`             //This is true if the daemon is reporting it is connected to the Docker host
+	DockerClient           *docker.Client `gorm:"-" json:"-"`               //Connection to the Docker instance
+	ExternalAddress        string         `json:"external_address"`         //External address that the spaces will use
+	ExternalDisplayAddress string         `json:"external_display_address"` //External addresses that users will see
 }
 
 //endregion
@@ -121,8 +119,6 @@ type DockerInstance struct {
 //region Internal Structs
 
 //endregion
-
-
 
 //This should only be 4 chars or you have to change our fancy banner
 var VERSION = "0.1A"
@@ -138,11 +134,11 @@ func Init() {
 	initLogging()
 	log.Infof(
 		"\n====================================\n"+
-		"== Userspace Daemon               ==\n"+
-		"== Version: %s                  ==\n"+
-		"== Manuel Gauto(github.com/twa16) ==\n"+
-		"== With <3 to SRCT (srct.gmu.edu) ==\n"+
-		"====================================\n", VERSION)
+			"== Userspace Daemon               ==\n"+
+			"== Version: %s                  ==\n"+
+			"== Manuel Gauto(github.com/twa16) ==\n"+
+			"== With <3 to SRCT (srct.gmu.edu) ==\n"+
+			"====================================\n", VERSION)
 
 	//Load the Configuration
 	loadConfig()
@@ -229,7 +225,7 @@ func loadConfig() {
 	//viper.SetDefault("k", "v")
 }
 
-func updateSpaceStates(db * gorm.DB)  {
+func updateSpaceStates(db *gorm.DB) {
 	spaces := []Space{}
 	db.Find(&spaces)
 
@@ -239,7 +235,7 @@ func updateSpaceStates(db * gorm.DB)  {
 		host := getHostByID(hostID)
 		//If the host is disconnected the start should be changed
 		if !host.IsConnected {
-			log.Infof("Updated Space %s(5d) to state %s from %s\n",space.FriendlyName, space.ID, "host error", space.SpaceState)
+			log.Infof("Updated Space %s(5d) to state %s from %s\n", space.FriendlyName, space.ID, "host error", space.SpaceState)
 			log.Criticalf("Host %s(%d) in Error State\n", host.Name, host.ID)
 			space.SpaceState = "host error"
 			db.Save(space)
@@ -250,24 +246,41 @@ func updateSpaceStates(db * gorm.DB)  {
 		//Now let's grab the actual container
 		container, err := dClient.InspectContainer(space.ContainerID)
 		if err != nil {
-			log.Critical("Error updating space state: "+err.Error())
-			log.Infof("Updated Space %s(%d) to state %s from %s\n",space.FriendlyName, space.ID, "error", space.SpaceState)
+			log.Critical("Error updating space state: " + err.Error())
+			log.Infof("Updated Space %s(%d) to state %s from %s\n", space.FriendlyName, space.ID, "error", space.SpaceState)
 			space.SpaceState = "error"
 			db.Save(space)
 			continue
 		}
 		if container == nil {
-			log.Infof("Updated Space %s(%d) to state %s from %s\n",space.FriendlyName, space.ID, "dead", space.SpaceState)
+			log.Infof("Updated Space %s(%d) to state %s from %s\n", space.FriendlyName, space.ID, "dead", space.SpaceState)
 			space.SpaceState = "dead"
 			db.Save(space)
 			continue
 		}
 		//Save the status
 		if container.State.Status != space.SpaceState {
-			log.Infof("Updated Space %s(%d) to state %s from %s\n",space.FriendlyName, space.ID, container.State.Status, space.SpaceState)
+			log.Infof("Updated Space %s(%d) to state %s from %s\n", space.FriendlyName, space.ID, container.State.Status, space.SpaceState)
 			space.SpaceState = container.State.Status
 			db.Save(space)
 			continue
 		}
 	}
+}
+
+func GetSpaceArrayAssociation(db *gorm.DB, spaces []Space) ([]Space, error) {
+	var processedSpaces []Space
+	for _, space := range spaces {
+		procSpace, err := GetSpaceAssociation(db, space)
+		if err != nil {
+			return processedSpaces, err
+		}
+		processedSpaces = append(processedSpaces, procSpace)
+	}
+	return processedSpaces, nil
+}
+
+func GetSpaceAssociation(db *gorm.DB, space Space) (Space, error) {
+	err := db.Model(&space).Related(&space.PortLinks).Error
+	return space, err
 }

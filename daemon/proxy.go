@@ -12,33 +12,33 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 package userspaced
 
 import (
-	"time"
-	"net"
 	"bytes"
 	"encoding/hex"
 	"flag"
-	"strconv"
-	"io"
-	"github.com/op/go-logging"
 	"fmt"
+	"github.com/op/go-logging"
+	"io"
+	"net"
+	"strconv"
+	"time"
 )
 
 var logproxy = logging.MustGetLogger("userspace-daemon")
 
 type ProxyInstance struct {
-	ID             uint `gorm:"primary_key" json:"-"`     // Primary Key and ID of container
-	PublicID       string `gorm:"index" json:"space_id"`  // Public UUID of this Space
-	CreatedAt      time.Time `json:"-"`                   // Creation time
-	ListenAddress  string `unique_index:idx_lstnaddress"` // Address that the proxy will listen on
-	ListenPort     int `unique_index:idx_lstnaddress"`    // Port that the proxy will listen on
-	ConnectAddress string                                 // Address that the proxy will connect to
-	ConnectPort    int                                    // Port that the proxy will connect to
-	SpaceID	       string
+	ID             uint      `gorm:"primary_key" json:"-"`   // Primary Key and ID of container
+	PublicID       string    `gorm:"index" json:"space_id"`  // Public UUID of this Space
+	CreatedAt      time.Time `json:"-"`                      // Creation time
+	ListenAddress  string    `unique_index:idx_lstnaddress"` // Address that the proxy will listen on
+	ListenPort     int       `unique_index:idx_lstnaddress"` // Port that the proxy will listen on
+	ConnectAddress string    // Address that the proxy will connect to
+	ConnectPort    int       // Port that the proxy will connect to
+	SpaceID        string
 }
 
 func (proxy ProxyInstance) proxyConn(conn *net.TCPConn) {

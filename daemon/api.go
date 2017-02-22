@@ -12,33 +12,33 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 package userspaced
 
 import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"github.com/spf13/viper"
+	auth "github.com/twa16/go-auth"
 	"goji.io"
 	"goji.io/pat"
 	"net/http"
-	"encoding/json"
-	"fmt"
-	auth "github.com/twa16/go-auth"
-	"errors"
-	"github.com/spf13/viper"
 	"os"
 	"os/signal"
-	"context"
 	"time"
 )
 
 const (
-	ADMIN_ADD_HOST = "admin.host.add"
-	ADMIN_READ_HOST = "admin.host.read"
+	ADMIN_ADD_HOST    = "admin.host.add"
+	ADMIN_READ_HOST   = "admin.host.read"
 	ADMIN_UPDATE_HOST = "admin.host.update"
 	ADMIN_DELETE_HOST = "admin.host.delete"
 )
 
-func getUserFromRequest(r *http.Request) (*auth.User, error){
+func getUserFromRequest(r *http.Request) (*auth.User, error) {
 	r.ParseForm()
 	if len(r.Header["X-Auth-Token"]) == 0 {
 		return nil, errors.New("No Token Provided")
@@ -46,15 +46,18 @@ func getUserFromRequest(r *http.Request) (*auth.User, error){
 	token := r.Header["X-Auth-Token"][0]
 	sess, err := authProvider.CheckSessionKey(token)
 	if err != nil {
-		log.Critical("Error Checking Session: "+err.Error())
+		log.Critical("Error Checking Session: " + err.Error())
 		return nil, errors.New("Internal Server Error")
+	}
+	if sess.AuthSession == nil {
+		return nil, errors.New("Session does not exist")
 	}
 	if sess.IsExpired {
 		return nil, errors.New("Session Expired")
 	}
 	user, err := authProvider.GetUserByID(sess.AuthSession.AuthUserID)
 	if err != nil {
-		log.Critical("Error Checking Session: "+err.Error())
+		log.Critical("Error Checking Session: " + err.Error())
 		return nil, errors.New("Internal Server Error")
 	}
 	return &user, nil
@@ -64,10 +67,10 @@ func getOrchestratorInfoAPIHandler(w http.ResponseWriter, r *http.Request) {
 	//It is probably faster to do this just once. We will cross that bridge when we get there
 	//I honestly forgot I could initialize structs like this.
 	orcInfo := OrchestratorInfo{
-		SupportsCAS: viper.GetBool("SupportsCAS"),
-		CASURL: viper.GetString("CASURL"),
+		SupportsCAS:        viper.GetBool("SupportsCAS"),
+		CASURL:             viper.GetString("CASURL"),
 		AllowsRegistration: viper.GetBool("AllowRegistration"),
-		AllowsLocalLogin: viper.GetBool("AllowLocalLogin"),
+		AllowsLocalLogin:   viper.GetBool("AllowLocalLogin"),
 	}
 	jsonBytes, _ := json.Marshal(orcInfo)
 	fmt.Fprint(w, string(jsonBytes))
@@ -131,7 +134,7 @@ func getSpacesAPIHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, err.Error())
 		return
 	}
-
+	//Get Spaces
 	var spaces []Space
 	err = database.Where("OwnerID", user.ID).Find(&spaces).Error
 	if err != nil {
@@ -139,6 +142,14 @@ func getSpacesAPIHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, err.Error())
 		return
 	}
+	//Get Space Association
+	spaces, err = GetSpaceArrayAssociation(database, spaces)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(w, err.Error())
+		return
+	}
+	//Marshal spaces to JSON
 	jsonBytes, _ := json.Marshal(spaces)
 	fmt.Fprint(w, string(jsonBytes))
 
@@ -146,9 +157,25 @@ func getSpacesAPIHandler(w http.ResponseWriter, r *http.Request) {
 
 //postDockerHostAPIHandler Handles the requests for adding a new docker host
 func postDockerHostAPIHandler(w http.ResponseWriter, r *http.Request) {
+	//Get user and error out if it didn't work
+	user, err := getUserFromRequest(r)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		fmt.Fprint(w, err.Error())
+		return
+	}
+
+	//Check permission
+	hasPerm, err := authProvider.CheckPermission(user.ID, ADMIN_ADD_HOST)
+	if err != nil || !hasPerm {
+		w.WriteHeader(http.StatusUnauthorized)
+		fmt.Fprint(w, err.Error())
+		return
+	}
+
 	decoder := json.NewDecoder(r.Body)
 	var dockerHost DockerInstance
-	err := decoder.Decode(&dockerHost)
+	err = decoder.Decode(&dockerHost)
 	if err != nil {
 		panic(err)
 	}
@@ -178,7 +205,7 @@ func getCASHandler(w http.ResponseWriter, r *http.Request) {
 	ticket := r.FormValue("ticket")
 	valResp, err := casServer.ValidateTicket(ticket)
 	if err != nil {
-		log.Warning("Error handling CAS login: "+err.Error())
+		log.Warning("Error handling CAS login: " + err.Error())
 		w.WriteHeader(http.StatusForbidden)
 		fmt.Fprint(w, "Error")
 		return
@@ -192,7 +219,7 @@ func getCASHandler(w http.ResponseWriter, r *http.Request) {
 				var user auth.User
 				user.Username = valResp.Username
 				user.Permissions = []auth.Permission{
-					{Permission: "user.*", },
+					{Permission: "user.*"},
 				}
 				authProvider.CreateUser(user)
 
@@ -206,7 +233,7 @@ func getCASHandler(w http.ResponseWriter, r *http.Request) {
 		//Generate the Session
 		session, err := authProvider.GenerateSessionKey(user.ID, false)
 		if err != nil {
-			log.Critical("Error Generating Session: "+err.Error())
+			log.Critical("Error Generating Session: " + err.Error())
 			w.WriteHeader(http.StatusInternalServerError)
 			fmt.Fprint(w, "Internal Server Error")
 			return
@@ -223,6 +250,7 @@ func getCASHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 var authProvider auth.AuthProvider
+
 func startAPI() {
 	//Start auth provider
 	authProvider.Database = database
