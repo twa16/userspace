@@ -29,13 +29,15 @@ import (
 //This is where I found the bug with Gogland haha (GO-3377)
 //region Model Structs
 
+//OrchestratorInfo This struct has the data that is sent to clients when they connect
 type OrchestratorInfo struct {
-	SupportsCAS        bool   `json:"supports_cas"`
-	CASURL             string `json:"cas_url"`
-	AllowsLocalLogin   bool   `json:"supports_local_login"`
-	AllowsRegistration bool   `json:"allows_registration"`
+	SupportsCAS        bool   `json:"supports_cas"` //True if the daemon supports CAS authentication
+	CASURL             string `json:"cas_url"` //Hostname that is used to connect to the CAS server
+	AllowsLocalLogin   bool   `json:"supports_local_login"` //True is the daemon supports local users
+	AllowsRegistration bool   `json:"allows_registration"` //True if the daemon allows registration for local users
 }
 
+//Space Struct that represents the space
 type Space struct {
 	ID            uint            `gorm:"primary_key" json:"-"`      // Primary Key and ID of container
 	CreatedAt     time.Time       `json:"-"`                         // Creation time
@@ -53,17 +55,18 @@ type Space struct {
 	PortLinks     []SpacePortLink `json: "port_links,omitempty"`     // Shows what external ports are bound to the ports on the space
 }
 
+//SpacePortLink A link between container port and host port
 type SpacePortLink struct {
 	ID              uint      `gorm:"primary_key" json:"-"` // Primary Key and ID of container
-	CreatedAt       time.Time `json:"-"`
-	SpacePort       uint16    `json:"space_port"`
-	ExternalPort    uint16    `json:"external_port;unique_index:idx_externaladdress"`
-	ExternalAddress string    `json: "external_address;unique_index:idx_externaladdress"`
-	DisplayAddress  string    `json: "external_display_address"`
-	SpaceID         uint      `json:"-"`
+	CreatedAt       time.Time `json:"-"` //Timestamp of creation
+	SpacePort       uint16    `json:"space_port"` //Port on the Space
+	ExternalPort    uint16    `json:"external_port;unique_index:idx_externaladdress"` //Port that is exposed on the host
+	ExternalAddress string    `json: "external_address;unique_index:idx_externaladdress"` // External address that clients would connect to the reach the space
+	DisplayAddress  string    `json: "external_display_address"` //Address that is displayed to clients as the external address
+	SpaceID         uint      `json:"-"` // ID of the space that this record is associated with
 }
 
-// SpaceImage
+// SpaceImage Image that is used to create the underlying container for a space
 type SpaceImage struct {
 	ID             uint      `gorm:"primary_key" json:"image_id"` //Primary Key
 	CreatedAt      time.Time `json:"-"`                           //Creation time
@@ -94,7 +97,7 @@ type UserPublicKey struct {
 	CreatedAt time.Time `json:"-"`                     // Creation time
 	OwnerID   uint      `json:"user_id"`               // ID of user tha owns this key
 	Name      string    `json:"name"`                  // Friendly name of this key
-	PublicKey string    `json:"public_key`             // Public key
+	PublicKey string    `json:"public_key"`             // Public key
 }
 
 //DockerInstance Struct representing a docker instance to use for containers
@@ -188,6 +191,7 @@ func Init() {
 	startAPI()
 }
 
+//initLogging Configures and initializes logging for the daemon
 func initLogging() {
 
 	// Example format string. Everything except the message has a custom color
@@ -268,6 +272,7 @@ func updateSpaceStates(db *gorm.DB) {
 	}
 }
 
+//GetSpaceArrayAssociation Retrieves associated records for an array of Spaces. Internally, this calls GetSpaceAssociation
 func GetSpaceArrayAssociation(db *gorm.DB, spaces []Space) ([]Space, error) {
 	var processedSpaces []Space
 	for _, space := range spaces {
@@ -280,6 +285,7 @@ func GetSpaceArrayAssociation(db *gorm.DB, spaces []Space) ([]Space, error) {
 	return processedSpaces, nil
 }
 
+//GetSpaceAssociation Retreives associated records for a Space
 func GetSpaceAssociation(db *gorm.DB, space Space) (Space, error) {
 	err := db.Model(&space).Related(&space.PortLinks).Error
 	return space, err
