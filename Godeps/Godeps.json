@@ -297,7 +297,7 @@
 		},
 		{
 			"ImportPath": "github.com/twa16/go-auth",
-			"Rev": "9352f4f5124077830a23bc12563d9e04e2f00a1e"
+			"Rev": "31fd13a60394ce83a96cd6bcca8de4ea0f078b06"
 		},
 		{
 			"ImportPath": "github.com/twa16/go-cas/client",

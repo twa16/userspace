@@ -29,6 +29,7 @@ import (
 	"os"
 	"os/signal"
 	"time"
+	"strings"
 )
 
 const (
@@ -96,6 +97,7 @@ func postSpaceAPIHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	//Decode the request
 	var spaceRequest Space
 	jsonDecoder := json.NewDecoder(r.Body)
 	err = jsonDecoder.Decode(&spaceRequest)
@@ -103,7 +105,7 @@ func postSpaceAPIHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Debug(err)
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprint(w, "Invalid Request: Error Decoding JSON")
+		fmt.Fprint(w, "Invalid Request: Error Decoding JSON\n")
 		return
 	}
 
@@ -124,9 +126,24 @@ func postSpaceAPIHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	go startSpace(database, createdSpace)
+	//Start Creation
+	creationStatusChan := make(chan string)
+	go startSpace(database, &createdSpace, creationStatusChan)
 
-	fmt.Fprint(w, "Space creation started")
+	//Start Watching Status
+	fmt.Fprint(w, "Space creation started\n")
+	for true {
+		select {
+			case responseLine := <-creationStatusChan:
+				fmt.Fprintf(w, "%s\n", responseLine)
+				if strings.HasPrefix(responseLine, "Error") || strings.HasPrefix(responseLine, "Creation Complete"){
+					return
+				}
+			case <-time.After(60 * time.Second):
+				fmt.Fprintln(w, "Error: Creation Timeout")
+				return
+		}
+	}
 }
 
 //getSpacesAPIHandler Handles GET /api/v1/spaces -- Get lists of spaces
@@ -140,7 +157,7 @@ func getSpacesAPIHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	//Get Spaces
 	var spaces []Space
-	err = database.Where("OwnerID", user.ID).Find(&spaces).Error
+	err = database.Where("owner_id", user.ID).Find(&spaces).Error
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprint(w, err.Error())
@@ -230,8 +247,13 @@ func getCASHandler(w http.ResponseWriter, r *http.Request) {
 				user.Permissions = []auth.Permission{
 					{Permission: "user.*"},
 				}
-				authProvider.CreateUser(user)
-
+				user, err = authProvider.CreateUser(user)
+				if err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+					log.Criticalf("Error Creating User: %s\n", err.Error())
+					fmt.Fprint(w, "Internal Server Error")
+					return
+				}
 			} else {
 				log.Warning("Error getting user for CAS login: " + err.Error())
 				w.WriteHeader(http.StatusForbidden)

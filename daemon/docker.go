@@ -130,24 +130,26 @@ func selectLeastOccupiedHost(db *gorm.DB) *DockerInstance {
 }
 
 //startSpace Creates and starts a new space
-func startSpace(db *gorm.DB, space Space) (error, *Space) {
+func startSpace(db *gorm.DB, space *Space, creationStatusChan chan string) (error, *Space) {
 	//======Initialization Steps=====
 	//Check if the requested image exists
 	if !checkImageExists(db, space.ImageID) {
+		creationStatusChan <- "Error: Invalid Image"
 		return errors.New("Invalid Image Specified"), nil
 	}
 	//Pick a host
 	dockerHost := selectLeastOccupiedHost(db)
 	space.HostID = dockerHost.ID
+	space.SpaceState = "started"
 	client := dockerHost.DockerClient
 	//Save it
-	db.Create(&space)
-	log.Infof("Select Host %d for space %d\n", space.HostID, space.ID)
+	db.Create(space)
+	creationStatusChan <- "Host Chosen"
+	log.Infof("Selected Host %d for space %d\n", space.HostID, space.ID)
 
 	//======Container Config=====
 	var containerConfig docker.Config
 	//Set the image
-
 	containerConfig.Image = getImageByID(db, space.ImageID).DockerImage
 
 	//Empty placeholder struct
@@ -165,15 +167,29 @@ func startSpace(db *gorm.DB, space Space) (error, *Space) {
 	//=====Host Config======
 	var hostConfig docker.HostConfig
 	//Secure Ports in DB
-	sshExternalPort := securePortForSpace(db, &space, 22)
-	serviceExternalPort := securePortForSpace(db, &space, 1337)
+	sshExternalPort := securePortForSpace(db, space, 22)
+	serviceExternalPort := securePortForSpace(db, space, 1337)
 	//Setup Port Maps
 	//Forward a dynamic host port to container. Listen on localhost so that nginx can proxy.
 	hostConfig.PortBindings = make(map[docker.Port][]docker.PortBinding)
 	hostConfig.PortBindings["22/tcp"] = append(hostConfig.PortBindings["22/tcp"], docker.PortBinding{HostIP: "127.0.0.1", HostPort: strconv.Itoa(sshExternalPort)})
 	hostConfig.PortBindings["1337/tcp"] = append(hostConfig.PortBindings["1337/tcp"], docker.PortBinding{HostIP: "127.0.0.1", HostPort: strconv.Itoa(serviceExternalPort)})
 	hostConfig.PortBindings["1337/udp"] = append(hostConfig.PortBindings["1337/udp"], docker.PortBinding{HostIP: "127.0.0.1", HostPort: strconv.Itoa(serviceExternalPort)})
+	//Save PortLinks
+	sshPortLink := SpacePortLink{}
+	sshPortLink.ExternalAddress = dockerHost.ExternalAddress
+	sshPortLink.DisplayAddress = dockerHost.ExternalDisplayAddress
+	sshPortLink.SpacePort = 22
+	sshPortLink.ExternalPort = uint16(sshExternalPort)
 
+	servicePortLink := SpacePortLink{}
+	servicePortLink.ExternalAddress = dockerHost.ExternalAddress
+	servicePortLink.DisplayAddress = dockerHost.ExternalDisplayAddress
+	servicePortLink.SpacePort = 1337
+	servicePortLink.ExternalPort = uint16(serviceExternalPort)
+
+	space.PortLinks = append(space.PortLinks, sshPortLink)
+	space.PortLinks = append(space.PortLinks, servicePortLink)
 	//======Network Config=====
 	var networkConfig docker.NetworkingConfig
 
@@ -191,12 +207,14 @@ func startSpace(db *gorm.DB, space Space) (error, *Space) {
 		log.Debug(err)
 		space.SpaceState = "Error Creating"
 		db.Save(space)
+		creationStatusChan <- "Error: Error Creating Container"
 		return err, nil
 	}
+	creationStatusChan <- "Container Created"
 	//Set container
 	space.ContainerID = c.ID
 	space.SpaceState = "created"
-	db.Save(&space)
+	db.Save(space)
 	log.Infof("Created container for space %d: %s\n", space.ID, space.ContainerID)
 
 	err = client.StartContainer(space.ContainerID, nil)
@@ -209,7 +227,8 @@ func startSpace(db *gorm.DB, space Space) (error, *Space) {
 		space.SpaceState = "running"
 		db.Save(space)
 	}
-	return nil, &space
+	creationStatusChan <- "Creation Complete"
+	return nil, space
 }
 
 //execInSpace Executes a command in a space
