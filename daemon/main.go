@@ -31,10 +31,10 @@ import (
 
 //OrchestratorInfo This struct has the data that is sent to clients when they connect
 type OrchestratorInfo struct {
-	SupportsCAS        bool   `json:"supports_cas"` //True if the daemon supports CAS authentication
-	CASURL             string `json:"cas_url"` //Hostname that is used to connect to the CAS server
+	SupportsCAS        bool   `json:"supports_cas"`         //True if the daemon supports CAS authentication
+	CASURL             string `json:"cas_url"`              //Hostname that is used to connect to the CAS server
 	AllowsLocalLogin   bool   `json:"supports_local_login"` //True is the daemon supports local users
-	AllowsRegistration bool   `json:"allows_registration"` //True if the daemon allows registration for local users
+	AllowsRegistration bool   `json:"allows_registration"`  //True if the daemon allows registration for local users
 }
 
 //Space Struct that represents the space
@@ -51,19 +51,19 @@ type Space struct {
 	FriendlyName  string          `json:"space_name,omitempty"`      // Friendly name of this space
 	ContainerID   string          `json:"space_id,omitempty"`        // ID of Docker container running this space
 	SpaceState    string          `json:"space_state,omitempty"`     // Running State of Space (running, paused, archived, error)
-	SSHKeyID      string          `json: "ssh_key_id,omitempty"`     // ID of the SSH Key that this container is using
-	PortLinks     []SpacePortLink `json: "port_links,omitempty"`     // Shows what external ports are bound to the ports on the space
+	SSHKeyID      string          `json:"ssh_key_id,omitempty"`      // ID of the SSH Key that this container is using
+	PortLinks     []SpacePortLink `json:"port_links,omitempty"`      // Shows what external ports are bound to the ports on the space
 }
 
 //SpacePortLink A link between container port and host port
 type SpacePortLink struct {
-	ID              uint      `gorm:"primary_key" json:"-"` // Primary Key and ID of container
-	CreatedAt       time.Time `json:"-"` //Timestamp of creation
-	SpacePort       uint16    `json:"space_port"` //Port on the Space
-	ExternalPort    uint16    `json:"external_port;unique_index:idx_externaladdress"` //Port that is exposed on the host
-	ExternalAddress string    `json: "external_address;unique_index:idx_externaladdress"` // External address that clients would connect to the reach the space
-	DisplayAddress  string    `json: "external_display_address"` //Address that is displayed to clients as the external address
-	SpaceID         uint      `json:"-"` // ID of the space that this record is associated with
+	ID              uint      `gorm:"primary_key" json:"-"`                              // Primary Key and ID of container
+	CreatedAt       time.Time `json:"-"`                                                 //Timestamp of creation
+	SpacePort       uint16    `json:"space_port"`                                        //Port on the Space
+	ExternalPort    uint16    `json:"external_port;unique_index:idx_externaladdress"`    //Port that is exposed on the host
+	ExternalAddress string    `json:"external_address;unique_index:idx_externaladdress"` // External address that clients would connect to the reach the space
+	DisplayAddress  string    `json:"external_display_address"`                          //Address that is displayed to clients as the external address
+	SpaceID         uint      `json:"-"`                                                 // ID of the space that this record is associated with
 }
 
 // SpaceImage Image that is used to create the underlying container for a space
@@ -97,7 +97,7 @@ type UserPublicKey struct {
 	CreatedAt time.Time `json:"-"`                     // Creation time
 	OwnerID   uint      `json:"user_id"`               // ID of user tha owns this key
 	Name      string    `json:"name"`                  // Friendly name of this key
-	PublicKey string    `json:"public_key"`             // Public key
+	PublicKey string    `json:"public_key"`            // Public key
 }
 
 //DockerInstance Struct representing a docker instance to use for containers
@@ -124,7 +124,7 @@ type DockerInstance struct {
 //endregion
 
 //This should only be 4 chars or you have to change our fancy banner
-var VERSION = "0.1A"
+var VERSION = "0.2A"
 var log = logging.MustGetLogger("userspace-daemon")
 var database *gorm.DB
 
@@ -240,7 +240,7 @@ func updateSpaceStates(db *gorm.DB) {
 		host := getHostByID(hostID)
 		//If the host is disconnected the start should be changed
 		if !host.IsConnected {
-			log.Infof("Updated Space %s(5d) to state %s from %s\n", space.FriendlyName, space.ID, "host error", space.SpaceState)
+			log.Infof("Updated Space %s(%d) to state %s from %s\n", space.FriendlyName, space.ID, "host error", space.SpaceState)
 			log.Criticalf("Host %s(%d) in Error State\n", host.Name, host.ID)
 			space.SpaceState = "host error"
 			db.Save(space)
