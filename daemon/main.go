@@ -37,11 +37,11 @@ type OrchestratorInfo struct {
 }
 
 type Space struct {
-	ID            uint            `gorm:"primary_key" json:"-"`      // Primary Key and ID of container
+	ID            uint            `gorm:"primary_key"`      // Primary Key and ID of container
 	CreatedAt     time.Time       `json:"-"`                         // Creation time
 	ArchiveDate   time.Time       `json:"archive_date,omitempty"`    // This is the timestamp of when the space was archived. This is set if the space was archived.
 	Archived      bool            `json:"archived,omitempty"`        // This value is true if the space was deleted as a result of inactivity. All data is lost but metadata is preserved.
-	ImageID       string          `json:"image_id,omitempty"`        // This is the image that is used by the container that contains the space. This is a link to SpaceImage.
+	ImageID       uint            `json:"image_id,omitempty"`        // This is the image that is used by the container that contains the space. This is a link to SpaceImage.
 	LastNetAccess string          `json:"last_net_access,omitempty"` // The time this space was last accessed over the network but not SSH. This may be empty if the space was never accessed.
 	LastSSHAccess time.Time       `json:"last_ssh_access,omitempty"` // The time this space was last accessed over SSH. This may be empty if the space was never accessed.
 	OwnerID       uint            `json:"owner_id,omitempty"`        // Unique ID of the user that owns the Space. This is a link to User.
@@ -49,7 +49,7 @@ type Space struct {
 	FriendlyName  string          `json:"space_name,omitempty"`      // Friendly name of this space
 	ContainerID   string          `json:"space_id,omitempty"`        // ID of Docker container running this space
 	SpaceState    string          `json:"space_state,omitempty"`     // Running State of Space (running, paused, archived, error)
-	SSHKeyID      string          `json: "ssh_key_id,omitempty"`     // ID of the SSH Key that this container is using
+	SSHKeyID      uint            `json: "ssh_key_id,omitempty"`     // ID of the SSH Key that this container is using
 	PortLinks     []SpacePortLink `json: "port_links,omitempty"`     // Shows what external ports are bound to the ports on the space
 }
 

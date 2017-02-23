@@ -169,7 +169,11 @@ func postDockerHostAPIHandler(w http.ResponseWriter, r *http.Request) {
 	hasPerm, err := authProvider.CheckPermission(user.ID, ADMIN_ADD_HOST)
 	if err != nil || !hasPerm {
 		w.WriteHeader(http.StatusUnauthorized)
-		fmt.Fprint(w, err.Error())
+		if err != nil {
+			fmt.Fprint(w, err.Error())
+		} else {
+			fmt.Fprint(w, "Unauthorized\n")
+		}
 		return
 	}
 

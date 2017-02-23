@@ -77,14 +77,14 @@ func getHostByID(hostID uint) *DockerInstance {
 }
 
 //getImageByID Helper method that gets an image by id
-func getImageByID(db *gorm.DB, imageID string) SpaceImage {
+func getImageByID(db *gorm.DB, imageID uint) SpaceImage {
 	var image SpaceImage
 	db.Find(&image, imageID)
 	return image
 }
 
 //checkImageExists Check if an image exists
-func checkImageExists(db *gorm.DB, imageID string) bool {
+func checkImageExists(db *gorm.DB, imageID uint) bool {
 	var image SpaceImage
 	return !db.Find(&image, imageID).RecordNotFound()
 }
