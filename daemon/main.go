@@ -229,6 +229,7 @@ func loadConfig() {
 	//viper.SetDefault("k", "v")
 }
 
+//updateSpaceStates Synchronizes the state of a space and its underlying container
 func updateSpaceStates(db *gorm.DB) {
 	spaces := []Space{}
 	db.Find(&spaces)

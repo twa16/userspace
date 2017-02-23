@@ -38,6 +38,7 @@ const (
 	ADMIN_DELETE_HOST = "admin.host.delete"
 )
 
+//getUserFromRequest Gets user from the X-Auth-Token that should be sent with all requests.
 func getUserFromRequest(r *http.Request) (*auth.User, error) {
 	r.ParseForm()
 	if len(r.Header["X-Auth-Token"]) == 0 {
@@ -63,6 +64,7 @@ func getUserFromRequest(r *http.Request) (*auth.User, error) {
 	return &user, nil
 }
 
+//getOrchestratorInfoAPIHandler Returns OrchestratorInfo to clients
 func getOrchestratorInfoAPIHandler(w http.ResponseWriter, r *http.Request) {
 	//It is probably faster to do this just once. We will cross that bridge when we get there
 	//I honestly forgot I could initialize structs like this.
@@ -76,6 +78,7 @@ func getOrchestratorInfoAPIHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, string(jsonBytes))
 }
 
+//postSpaceAPIHandler Handles POST /api/v1/spaces - Called when a user wishes to create a space
 func postSpaceAPIHandler(w http.ResponseWriter, r *http.Request) {
 	//Get user and error out if it didn't work
 	user, err := getUserFromRequest(r)
@@ -126,6 +129,7 @@ func postSpaceAPIHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "Space creation started")
 }
 
+//getSpacesAPIHandler Handles GET /api/v1/spaces -- Get lists of spaces
 func getSpacesAPIHandler(w http.ResponseWriter, r *http.Request) {
 	//Get user and error out if it didn't work
 	user, err := getUserFromRequest(r)
@@ -200,6 +204,7 @@ func getImagesAPIHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, string(jsonBytes))
 }
 
+//getCASHandler Handles CAS tickets sent from clients
 func getCASHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	ticket := r.FormValue("ticket")
@@ -251,6 +256,7 @@ func getCASHandler(w http.ResponseWriter, r *http.Request) {
 
 var authProvider auth.AuthProvider
 
+//startAPI Starts the API server and required services such as the AuthProvider
 func startAPI() {
 	//Start auth provider
 	authProvider.Database = database

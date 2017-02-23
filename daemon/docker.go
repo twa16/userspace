@@ -29,6 +29,7 @@ import (
 //Contains running instances of docker hosts
 var DockerInstances []*DockerInstance
 
+//initDockerHosts Pulls docker hosts from the DB, adds them to the cache and connects to them
 func initDockerHosts(db *gorm.DB) {
 	instances := getAllDockerInstanceConfigurations(db)
 	log.Infof("Initiating Connections to %d Docker Host(s)\n", len(instances))
@@ -45,6 +46,7 @@ func initDockerHosts(db *gorm.DB) {
 
 var dockerInstanceSliceLock sync.Mutex
 
+//addAndConnectToDockerInstance Adds a new host to in-memory cache and establishes connection to it.
 func addAndConnectToDockerInstance(db *gorm.DB, instance *DockerInstance) (*DockerInstance, error) {
 	//It is technically possible for two hosts to be added at once, so let's lock the slice
 	dockerInstanceSliceLock.Lock()
@@ -127,6 +129,7 @@ func selectLeastOccupiedHost(db *gorm.DB) *DockerInstance {
 	return DockerInstances[0]
 }
 
+//startSpace Creates and starts a new space
 func startSpace(db *gorm.DB, space Space) (error, *Space) {
 	//======Initialization Steps=====
 	//Check if the requested image exists
@@ -209,6 +212,7 @@ func startSpace(db *gorm.DB, space Space) (error, *Space) {
 	return nil, &space
 }
 
+//execInSpace Executes a command in a space
 func execInSpace(db *gorm.DB, space Space, command []string) error {
 	dockerHost := getHostByID(space.HostID)
 
@@ -231,6 +235,7 @@ func execInSpace(db *gorm.DB, space Space, command []string) error {
 	return nil
 }
 
+//startDockerClient Opens a connection to a docker instance
 func startDockerClient(instance *DockerInstance) (*docker.Client, error) {
 	log.Infof("Connecting to Docker Host %s using connection type %s\n", instance.Name, instance.ConnectionType)
 	var cli *docker.Client
@@ -259,6 +264,7 @@ func startDockerClient(instance *DockerInstance) (*docker.Client, error) {
 	return cli, err
 }
 
+//ensureStarterImages Pulls docker images needed for spaces to all hosts
 func ensureStarterImages(db *gorm.DB) {
 	ubuntuImage := SpaceImage{}
 	db.Where("docker_image = ? AND docker_image_tag = ?", "userspace/ubuntu", "latest").First(&ubuntuImage)
@@ -273,6 +279,7 @@ func ensureStarterImages(db *gorm.DB) {
 	}
 }
 
+//downloadDockerImages Download an image to host
 func downloadDockerImages(db *gorm.DB) {
 	images := []SpaceImage{}
 	db.Find(&images)

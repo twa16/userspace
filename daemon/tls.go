@@ -29,10 +29,12 @@ import (
 	"path/filepath"
 )
 
+//pemBlockForKey Gets blocks from PrivateKey
 func pemBlockForKey(priv *rsa.PrivateKey) *pem.Block {
 	return &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(priv)}
 }
 
+//CreateSelfSignedCertificate Creates a self-signed certificate for a hostname
 func CreateSelfSignedCertificate(host string) (*rsa.PrivateKey, []byte, error) {
 	priv, err := rsa.GenerateKey(rand.Reader, 4096)
 	notBefore := time.Now()
@@ -72,6 +74,7 @@ func CreateSelfSignedCertificate(host string) (*rsa.PrivateKey, []byte, error) {
 	return priv, derBytes, nil
 }
 
+//WriteCertificateToFile Writes a certificate to a file
 func WriteCertificateToFile(certificate []byte, filePath string) error {
 	certPath, err := filepath.Abs(filePath)
 	if err != nil {
@@ -87,6 +90,7 @@ func WriteCertificateToFile(certificate []byte, filePath string) error {
 	return nil
 }
 
+//WritePrivateKeyToFile Writes a private key to a file
 func WritePrivateKeyToFile(key *rsa.PrivateKey, filePath string) error {
 	certPath, err := filepath.Abs(filePath)
 	if err != nil {

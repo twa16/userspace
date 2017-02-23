@@ -7,6 +7,7 @@ import (
 
 var casServer gocas.CASServerConfig
 
+//initCAS Initializes connection to CAS server for ticket validation
 func initCAS() {
 	casServer.ServerHostname = viper.GetString("CASURL")
 	casServer.IgnoreSSLErrors = false
