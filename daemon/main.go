@@ -60,8 +60,8 @@ type SpacePortLink struct {
 	ID              uint      `gorm:"primary_key" json:"-"`                              // Primary Key and ID of container
 	CreatedAt       time.Time `json:"-"`                                                 //Timestamp of creation
 	SpacePort       uint16    `json:"space_port"`                                        //Port on the Space
-	ExternalPort    uint16    `json:"external_port;unique_index:idx_externaladdress"`    //Port that is exposed on the host
-	ExternalAddress string    `json:"external_address;unique_index:idx_externaladdress"` // External address that clients would connect to the reach the space
+	ExternalPort    uint16    `json:"external_port" gorm:"unique_index:idx_externaladdress"`    //Port that is exposed on the host
+	ExternalAddress string    `json:"external_address" gorm:"unique_index:idx_externaladdress"` // External address that clients would connect to the reach the space
 	DisplayAddress  string    `json:"external_display_address"`                          //Address that is displayed to clients as the external address
 	SpaceID         uint      `json:"-"`                                                 // ID of the space that this record is associated with
 }

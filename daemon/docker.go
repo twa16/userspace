@@ -219,7 +219,7 @@ func startSpace(db *gorm.DB, space *Space, creationStatusChan chan string) (erro
 
 	err = client.StartContainer(space.ContainerID, nil)
 	if err != nil {
-		log.Criticalf("Error starting container for space %d: %s\n", space.ID, space.ContainerID)
+		log.Criticalf("Error starting container for space %d: %s\n", space.ID, err.Error())
 		space.SpaceState = "error starting"
 		db.Save(space)
 	} else {
