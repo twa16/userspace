@@ -251,6 +251,10 @@ func updateSpaceStates(db *gorm.DB) {
 		//Now let's grab the actual container
 		container, err := dClient.InspectContainer(space.ContainerID)
 		if err != nil {
+			//No need to continuously complain about containers that are already in error state
+			if space.SpaceState == "error" {
+				continue
+			}
 			log.Critical("Error updating space state: " + err.Error())
 			log.Infof("Updated Space %s(%d) to state %s from %s\n", space.FriendlyName, space.ID, "error", space.SpaceState)
 			space.SpaceState = "error"
