@@ -286,7 +286,7 @@ var authProvider auth.AuthProvider
 func startAPI() {
 	//Start auth provider
 	authProvider.Database = database
-	authProvider.SessionExpireTimeSeconds = 60 * 30
+	authProvider.SessionExpireTimeSeconds = viper.GetInt64("SessionExpirationSeconds")
 	authProvider.Startup()
 
 	//Ensure admin user exists

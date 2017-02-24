@@ -5,3 +5,4 @@ AllowLocalLogin: false
 AllowRegistration: false
 ApiHttpsKey: ./api.key
 ApiHttpsCertificate: ./api.cert
+SessionExpirationSeconds: 3600
