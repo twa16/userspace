@@ -28,8 +28,8 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"time"
 	"strings"
+	"time"
 )
 
 const (
@@ -134,14 +134,14 @@ func postSpaceAPIHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "Space creation started\n")
 	for true {
 		select {
-			case responseLine := <-creationStatusChan:
-				fmt.Fprintf(w, "%s\n", responseLine)
-				if strings.HasPrefix(responseLine, "Error") || strings.HasPrefix(responseLine, "Creation Complete"){
-					return
-				}
-			case <-time.After(60 * time.Second):
-				fmt.Fprintln(w, "Error: Creation Timeout")
+		case responseLine := <-creationStatusChan:
+			fmt.Fprintf(w, "%s\n", responseLine)
+			if strings.HasPrefix(responseLine, "Error") || strings.HasPrefix(responseLine, "Creation Complete") {
 				return
+			}
+		case <-time.After(60 * time.Second):
+			fmt.Fprintln(w, "Error: Creation Timeout")
+			return
 		}
 	}
 }
