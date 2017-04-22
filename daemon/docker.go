@@ -125,8 +125,11 @@ func securePortForSpace(db *gorm.DB, space *Space, destPort uint16) int {
 
 //TODO: Make this do the thing. Returns first instance since when this was written spaces weren't created yet. This will probably be done with raw sql.
 //selectLeastOccupiedHost Returns the host that has the fewest number of instances.
-func selectLeastOccupiedHost(db *gorm.DB) *DockerInstance {
-	return DockerInstances[0]
+func selectLeastOccupiedHost(db *gorm.DB) (*DockerInstance, error) {
+	if len(DockerInstances) == 0 {
+		return nil, errors.New("No Hosts Have Been Added!")
+	}
+	return DockerInstances[0], nil
 }
 
 //startSpace Creates and starts a new space
@@ -138,7 +141,11 @@ func startSpace(db *gorm.DB, space *Space, creationStatusChan chan string) (erro
 		return errors.New("Invalid Image Specified"), nil
 	}
 	//Pick a host
-	dockerHost := selectLeastOccupiedHost(db)
+	dockerHost, err := selectLeastOccupiedHost(db)
+	if err != nil {
+		log.Critical("No hosts have been added.")
+		return err, nil
+	}
 	space.HostID = dockerHost.ID
 	space.SpaceState = "started"
 	client := dockerHost.DockerClient
