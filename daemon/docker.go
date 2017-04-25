@@ -108,7 +108,7 @@ func securePortForSpace(db *gorm.DB, space *Space, destPort uint16) int {
 		portMapping.ExternalPort = uint16(portTry)
 		log.Debugf("Trying to secure port %d for %d\n", portTry, space.ID)
 		space.PortLinks = append(originalPort, portMapping)
-		db.Model(&space).Related(&space.PortLinks)
+		//db.Model(&space).Related(&space.PortLinks)
 		//Try to update and see if we get an error
 		//Maybe we should add an attempt cap here
 		err := db.Save(&space).Error
@@ -220,6 +220,9 @@ func startSpace(db *gorm.DB, space *Space, creationStatusChan chan string) (erro
 	creationStatusChan <- "Container Created"
 	//Set container
 	space.ContainerID = c.ID
+	//At first, let us keep all containers alive
+	//TODO: Make this configurable and with a quota
+	space.KeepAlive = true
 	space.SpaceState = "created"
 	db.Save(space)
 	log.Infof("Created container for space %d: %s\n", space.ID, space.ContainerID)
@@ -235,6 +238,7 @@ func startSpace(db *gorm.DB, space *Space, creationStatusChan chan string) (erro
 		db.Save(space)
 	}
 	creationStatusChan <- "Creation Complete"
+	//execInSpace(database, *space, []string{"touch", "/root/testblop"})
 	return nil, space
 }
 

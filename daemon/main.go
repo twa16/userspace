@@ -53,6 +53,7 @@ type Space struct {
 	SpaceState    string          `json:"space_state,omitempty"`     // Running State of Space (running, paused, archived, error)
 	SSHKeyID      uint            `json: "ssh_key_id,omitempty"`     // ID of the SSH Key that this container is using
 	PortLinks     []SpacePortLink `json: "port_links,omitempty"`     // Shows what external ports are bound to the ports on the space
+	KeepAlive     bool            `json: "keep_alive,omitempty"`     // If true, this container will be started if found to be 'exited'
 }
 
 //SpacePortLink A link between container port and host port
@@ -61,8 +62,8 @@ type SpacePortLink struct {
 	CreatedAt       time.Time `json:"-"`                                                 //Timestamp of creation
 	SpacePort       uint16    `json:"space_port"`                                        //Port on the Space
 	ExternalPort    uint16    `json:"external_port" gorm:"unique_index:idx_externaladdress"`    //Port that is exposed on the host
-	ExternalAddress string    `json:"external_address" gorm:"unique_index:idx_externaladdress"` // External address that clients would connect to the reach the space
-	DisplayAddress  string    `json:"external_display_address"`                          //Address that is displayed to clients as the external address
+	ExternalAddress string    `json:"external_address"` // External address that clients would connect to the reach the space
+	DisplayAddress  string    `json:"external_display_address" gorm:"unique_index:idx_externaladdress"`                          //Address that is displayed to clients as the external address
 	SpaceID         uint      `json:"-"`                                                 // ID of the space that this record is associated with
 }
 
@@ -266,6 +267,19 @@ func updateSpaceStates(db *gorm.DB) {
 			space.SpaceState = "dead"
 			db.Save(space)
 			continue
+		}
+		if container.State.Status == "exited" {
+			err = dClient.StartContainer(container.ID, nil)
+			if err == nil {
+				log.Infof("Restarted Space %s(%d) that was exited. [%s]\n", space.FriendlyName, space.ID, space.ContainerID)
+				space.SpaceState = "running"
+				db.Save(space)
+				continue
+			} else {
+				log.Critical("Failed to restart exited Space %s(%d). [%s]", space.FriendlyName, space.ID, space.ContainerID)
+				space.SpaceState = "error"
+				db.Save(space)
+			}
 		}
 		//Save the status
 		if container.State.Status != space.SpaceState {
