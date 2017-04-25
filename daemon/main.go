@@ -24,6 +24,8 @@ import (
 	"github.com/spf13/viper"
 	"os"
 	"time"
+	"errors"
+	"context"
 )
 
 //This is where I found the bug with Gogland haha (GO-3377)
@@ -247,6 +249,10 @@ func updateSpaceStates(db *gorm.DB) {
 			db.Save(space)
 			continue
 		}
+		//Ignore spaces that are just starting
+		if space.SpaceState == "started" {
+			continue
+		}
 		//Get the client from the host
 		dClient := host.DockerClient
 		//Now let's grab the actual container
@@ -259,12 +265,6 @@ func updateSpaceStates(db *gorm.DB) {
 			log.Critical("Error updating space state: " + err.Error())
 			log.Infof("Updated Space %s(%d) to state %s from %s\n", space.FriendlyName, space.ID, "error", space.SpaceState)
 			space.SpaceState = "error"
-			db.Save(space)
-			continue
-		}
-		if container == nil {
-			log.Infof("Updated Space %s(%d) to state %s from %s\n", space.FriendlyName, space.ID, "dead", space.SpaceState)
-			space.SpaceState = "dead"
 			db.Save(space)
 			continue
 		}
@@ -308,4 +308,45 @@ func GetSpaceArrayAssociation(db *gorm.DB, spaces []Space) ([]Space, error) {
 func GetSpaceAssociation(db *gorm.DB, space Space) (Space, error) {
 	err := db.Model(&space).Related(&space.PortLinks).Error
 	return space, err
+}
+
+func RemoveSpace(db *gorm.DB, space Space) error {
+	//Get Host Docker Connection
+	hostID := space.HostID
+	dockerHost := getHostByID(hostID)
+	//Ensure the host is connected
+	if !dockerHost.IsConnected {
+		log.Critical("Attempted to remove container %s from disconnected host.")
+		return errors.New("Attempted to remove contaienr from disconnected host.")
+	}
+	//Only remove the container if the container is not already dead
+	if space.SpaceState != "error" {
+		//Stop the container
+		dClient := dockerHost.DockerClient
+		err := dClient.StopContainer(space.ContainerID, 30)
+		//Catch any errors
+		if err != nil {
+			log.Criticalf("Error stopping container %s: %s", err.Error())
+			return err
+		}
+		//Remove the container
+		removeOptions := docker.RemoveContainerOptions{
+			ID:            space.ContainerID,
+			RemoveVolumes: true,
+			Force:         true,
+			Context:       context.Background(),
+		}
+		err = dClient.RemoveContainer(removeOptions)
+		if err != nil {
+			log.Criticalf("Error removing container %s: %s", err.Error())
+			return err
+		}
+	}
+	//Remove the db object
+	err := db.Delete(&space).Error
+	if err != nil {
+		log.Criticalf("Error removing space record for %d\n", space.ID, err.Error())
+		return err
+	}
+	return nil
 }

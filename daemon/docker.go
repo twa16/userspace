@@ -147,10 +147,10 @@ func startSpace(db *gorm.DB, space *Space, creationStatusChan chan string) (erro
 		return err, nil
 	}
 	space.HostID = dockerHost.ID
-	space.SpaceState = "started"
+	space.SpaceState = "creation started"
 	client := dockerHost.DockerClient
 	//Save it
-	db.Create(space)
+	db.Create(&space)
 	creationStatusChan <- "Host Chosen"
 	log.Infof("Selected Host %d for space %d\n", space.HostID, space.ID)
 
@@ -213,7 +213,7 @@ func startSpace(db *gorm.DB, space *Space, creationStatusChan chan string) (erro
 		log.Criticalf("Failed to create container for space %d\n", space.ID)
 		log.Debug(err)
 		space.SpaceState = "Error Creating"
-		db.Save(space)
+		db.Save(&space)
 		creationStatusChan <- "Error: Error Creating Container"
 		return err, nil
 	}
@@ -224,18 +224,18 @@ func startSpace(db *gorm.DB, space *Space, creationStatusChan chan string) (erro
 	//TODO: Make this configurable and with a quota
 	space.KeepAlive = true
 	space.SpaceState = "created"
-	db.Save(space)
+	db.Save(&space)
 	log.Infof("Created container for space %d: %s\n", space.ID, space.ContainerID)
 
 	err = client.StartContainer(space.ContainerID, nil)
 	if err != nil {
 		log.Criticalf("Error starting container for space %d: %s\n", space.ID, err.Error())
 		space.SpaceState = "error starting"
-		db.Save(space)
+		db.Save(&space)
 	} else {
 		log.Infof("Container for Space %d started: %s\n", space.ID, space.ContainerID)
 		space.SpaceState = "running"
-		db.Save(space)
+		db.Save(&space)
 	}
 	creationStatusChan <- "Creation Complete"
 	//execInSpace(database, *space, []string{"touch", "/root/testblop"})

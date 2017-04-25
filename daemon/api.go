@@ -33,10 +33,11 @@ import (
 )
 
 const (
-	ADMIN_ADD_HOST    = "admin.host.add"
-	ADMIN_READ_HOST   = "admin.host.read"
-	ADMIN_UPDATE_HOST = "admin.host.update"
-	ADMIN_DELETE_HOST = "admin.host.delete"
+	ADMIN_ADD_HOST     = "admin.host.add"
+	ADMIN_READ_HOST    = "admin.host.read"
+	ADMIN_UPDATE_HOST  = "admin.host.update"
+	ADMIN_DELETE_HOST  = "admin.host.delete"
+	ADMIN_DELETE_SPACE = "admin.space.delete"
 )
 
 //getUserFromRequest Gets user from the X-Auth-Token that should be sent with all requests.
@@ -174,6 +175,69 @@ func getSpacesAPIHandler(w http.ResponseWriter, r *http.Request) {
 	jsonBytes, _ := json.Marshal(spaces)
 	fmt.Fprint(w, string(jsonBytes))
 
+}
+
+//deleteSpaceAPIHandler Handle DELETE /api/v1/space/[id]
+func deleteSpaceAPIHandler(w http.ResponseWriter, r *http.Request) {
+	//Get user and error out if it didn't work
+	user, err := getUserFromRequest(r)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		fmt.Fprint(w, err.Error())
+		return
+	}
+	//Get spaceid
+	spaceID := pat.Param(r, "spaceid")
+	//Make sure the spaceid is set
+	if spaceID == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprint(w, "No space selected")
+		return
+	}
+
+	//Check permission
+	hasPerm, err := authProvider.CheckPermission(user.ID, ADMIN_DELETE_SPACE)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		if err != nil {
+			fmt.Fprint(w, err.Error())
+		} else {
+			fmt.Fprint(w, "Unauthorized\n")
+		}
+		return
+	}
+
+	//Retrieve the space
+	var space Space
+	err = database.First(&space, spaceID).Error
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		if err != nil {
+			fmt.Fprint(w, err.Error())
+		} else {
+			fmt.Fprint(w, "Error Retrieving Space\n")
+		}
+		return
+	}
+
+	//Ensure auth
+	if space.OwnerID != user.ID && !hasPerm {
+		w.WriteHeader(http.StatusUnauthorized)
+		if err != nil {
+			fmt.Fprint(w, err.Error())
+		} else {
+			fmt.Fprint(w, "Unauthorized\n")
+		}
+		return
+	}
+
+	//Let's remove the space
+	err = RemoveSpace(database, space)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(w, "Internal Error Removing Space")
+		return
+	}
 }
 
 //postDockerHostAPIHandler Handles the requests for adding a new docker host
@@ -325,6 +389,7 @@ func startAPI() {
 	mux := goji.NewMux()
 	mux.HandleFunc(pat.Post("/api/v1/spaces"), postSpaceAPIHandler)
 	mux.HandleFunc(pat.Get("/api/v1/spaces"), getSpacesAPIHandler)
+	mux.HandleFunc(pat.Delete("/api/v1/space/:spaceid"), deleteSpaceAPIHandler)
 	mux.HandleFunc(pat.Post("/api/v1/hosts"), postDockerHostAPIHandler)
 	mux.HandleFunc(pat.Get("/api/v1/images"), getImagesAPIHandler)
 	mux.HandleFunc(pat.Get("/api/v1/ping"), pingAPIHandler)
