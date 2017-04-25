@@ -152,6 +152,7 @@ func Init() {
 	//Init DB
 	log.Info("Connecting to database...")
 	db, err := gorm.Open("sqlite3", "./userspace.db")
+	//db.LogMode(true)
 	database = db
 	defer database.Close()
 	if err != nil {
@@ -326,20 +327,21 @@ func RemoveSpace(db *gorm.DB, space Space) error {
 		err := dClient.StopContainer(space.ContainerID, 30)
 		//Catch any errors
 		if err != nil {
-			log.Criticalf("Error stopping container %s: %s", err.Error())
-			return err
-		}
-		//Remove the container
-		removeOptions := docker.RemoveContainerOptions{
-			ID:            space.ContainerID,
-			RemoveVolumes: true,
-			Force:         true,
-			Context:       context.Background(),
-		}
-		err = dClient.RemoveContainer(removeOptions)
-		if err != nil {
-			log.Criticalf("Error removing container %s: %s", err.Error())
-			return err
+			log.Criticalf("Error stopping container %s: %s", space.ContainerID, err.Error())
+			//return err
+		} else {
+			//Remove the container
+			removeOptions := docker.RemoveContainerOptions{
+				ID:            space.ContainerID,
+				RemoveVolumes: true,
+				Force:         true,
+				Context:       context.Background(),
+			}
+			err = dClient.RemoveContainer(removeOptions)
+			if err != nil {
+				log.Criticalf("Error removing container %s: %s", space.ContainerID, err.Error())
+				//return err
+			}
 		}
 	}
 	//Remove the db object

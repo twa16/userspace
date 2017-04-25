@@ -18,12 +18,12 @@ package userspaced
 
 import (
 	"context"
-	"github.com/fsouza/go-dockerclient"
 	"github.com/jinzhu/gorm"
 	"github.com/pkg/errors"
 	"math/rand"
 	"strconv"
 	"sync"
+	"github.com/fsouza/go-dockerclient"
 )
 
 //Contains running instances of docker hosts
@@ -92,7 +92,7 @@ func checkImageExists(db *gorm.DB, imageID uint) bool {
 }
 
 //securePortForSpace Picks an open port between 20000 and 30000. Saves new PortLink
-func securePortForSpace(db *gorm.DB, space *Space, destPort uint16) int {
+func securePortForSpace(db *gorm.DB, space *Space, destPort uint16) *SpacePortLink {
 	log.Debugf("Attempting to secure port for %d: %d\n", space.ID, destPort)
 	spaceHost := getHostByID(space.HostID)
 	originalPort := space.PortLinks
@@ -111,16 +111,26 @@ func securePortForSpace(db *gorm.DB, space *Space, destPort uint16) int {
 		//db.Model(&space).Related(&space.PortLinks)
 		//Try to update and see if we get an error
 		//Maybe we should add an attempt cap here
-		err := db.Save(&space).Error
-		if err == nil {
-			log.Infof("Secured port mapping for space %d: %d -> %d\n", space.ID, portTry, destPort)
-			return portTry
+		//err := db.Save(&space).Error
+		if isPortOpen(db, portMapping.ExternalAddress, portMapping.ExternalPort) {
+			err := db.Save(&space).Error
+			if err != nil {
+				log.Criticalf("Error Saving Port Mapping: %s\n", err.Error())
+			} else {
+				log.Infof("Secured port mapping for space %d: %d -> %d\n", space.ID, portTry, destPort)
+				return &portMapping
+			}
 		} else {
 			log.Infof("Port %d is taken\n", portTry)
 		}
 	}
 	//This should never happen unless something went horribly wrong
-	return -1
+	return nil
+}
+
+func isPortOpen(db *gorm.DB, externalAddress string, port uint16) bool {
+	var holder SpacePortLink
+	return db.Where(&SpacePortLink{ExternalAddress: externalAddress, ExternalPort: port}).First(&holder).RecordNotFound()
 }
 
 //TODO: Make this do the thing. Returns first instance since when this was written spaces weren't created yet. This will probably be done with raw sql.
@@ -174,29 +184,25 @@ func startSpace(db *gorm.DB, space *Space, creationStatusChan chan string) (erro
 	//=====Host Config======
 	var hostConfig docker.HostConfig
 	//Secure Ports in DB
-	sshExternalPort := securePortForSpace(db, space, 22)
-	serviceExternalPort := securePortForSpace(db, space, 1337)
+	sshPortLink := securePortForSpace(db, space, 22)
+	servicePortLink := securePortForSpace(db, space, 1337)
 	//Setup Port Maps
 	//Forward a dynamic host port to container. Listen on localhost so that nginx can proxy.
 	hostConfig.PortBindings = make(map[docker.Port][]docker.PortBinding)
-	hostConfig.PortBindings["22/tcp"] = append(hostConfig.PortBindings["22/tcp"], docker.PortBinding{HostIP: "127.0.0.1", HostPort: strconv.Itoa(sshExternalPort)})
-	hostConfig.PortBindings["1337/tcp"] = append(hostConfig.PortBindings["1337/tcp"], docker.PortBinding{HostIP: "127.0.0.1", HostPort: strconv.Itoa(serviceExternalPort)})
-	hostConfig.PortBindings["1337/udp"] = append(hostConfig.PortBindings["1337/udp"], docker.PortBinding{HostIP: "127.0.0.1", HostPort: strconv.Itoa(serviceExternalPort)})
+	hostConfig.PortBindings["22/tcp"] = append(hostConfig.PortBindings["22/tcp"], docker.PortBinding{HostIP: "127.0.0.1", HostPort: strconv.Itoa(int(sshPortLink.ExternalPort))})
+	hostConfig.PortBindings["1337/tcp"] = append(hostConfig.PortBindings["1337/tcp"], docker.PortBinding{HostIP: "127.0.0.1", HostPort: strconv.Itoa(int(servicePortLink.ExternalPort))})
+	hostConfig.PortBindings["1337/udp"] = append(hostConfig.PortBindings["1337/udp"], docker.PortBinding{HostIP: "127.0.0.1", HostPort: strconv.Itoa(int(servicePortLink.ExternalPort))})
 	//Save PortLinks
-	sshPortLink := SpacePortLink{}
 	sshPortLink.ExternalAddress = dockerHost.ExternalAddress
 	sshPortLink.DisplayAddress = dockerHost.ExternalDisplayAddress
 	sshPortLink.SpacePort = 22
-	sshPortLink.ExternalPort = uint16(sshExternalPort)
 
-	servicePortLink := SpacePortLink{}
 	servicePortLink.ExternalAddress = dockerHost.ExternalAddress
 	servicePortLink.DisplayAddress = dockerHost.ExternalDisplayAddress
 	servicePortLink.SpacePort = 1337
-	servicePortLink.ExternalPort = uint16(serviceExternalPort)
 
-	space.PortLinks = append(space.PortLinks, sshPortLink)
-	space.PortLinks = append(space.PortLinks, servicePortLink)
+	space.PortLinks = append(space.PortLinks, *sshPortLink)
+	space.PortLinks = append(space.PortLinks, *servicePortLink)
 	//======Network Config=====
 	var networkConfig docker.NetworkingConfig
 
