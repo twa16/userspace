@@ -38,6 +38,7 @@ const (
 	ADMIN_UPDATE_HOST  = "admin.host.update"
 	ADMIN_DELETE_HOST  = "admin.host.delete"
 	ADMIN_DELETE_SPACE = "admin.space.delete"
+	USER_SPACE_CREATE  = "user.space.create"
 )
 
 //getUserFromRequest Gets user from the X-Auth-Token that should be sent with all requests.
@@ -91,7 +92,7 @@ func postSpaceAPIHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//Check permission
-	hasPerm, err := authProvider.CheckPermission(user.ID, "user.space.create")
+	hasPerm, err := authProvider.CheckPermission(user.ID, USER_SPACE_CREATE)
 	if err != nil || !hasPerm {
 		w.WriteHeader(http.StatusUnauthorized)
 		fmt.Fprint(w, err.Error())
@@ -276,6 +277,49 @@ func postDockerHostAPIHandler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 }
 
+//postKeyAPIHandler Handles requests to add a key to a user profile
+func postKeyAPIHandler(w http.ResponseWriter, r *http.Request) {
+	//Get user and error out if it didn't work
+	user, err := getUserFromRequest(r)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		fmt.Fprint(w, err.Error())
+		return
+	}
+
+	//Check permission
+	hasPerm, err := authProvider.CheckPermission(user.ID, USER_SPACE_CREATE)
+	if err != nil || !hasPerm {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	//Decode body of request
+	decoder := json.NewDecoder(r.Body)
+	var newKey UserPublicKey
+	err = decoder.Decode(&newKey)
+	//If there is a decode error, then 400
+	if err != nil {
+		log.Warningf("Bad request from user: %s\n", user.Username)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	//Make sure the user ids match up, if not, then the request is suspicious.
+	if newKey.OwnerID != user.ID {
+		log.Criticalf("Add Key Mismatch: %s attempted to add a key to another account.\n", user.Username)
+		w.WriteHeader(http.StatusForbidden)
+		return
+	}
+
+	err = database.Save(&newKey).Error
+	if err != nil {
+		log.Criticalf("Error saving to database: %s\n", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+}
+
 //pingAPIHandler Handles the ping test endpoint
 func pingAPIHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "PONG")
@@ -393,6 +437,7 @@ func startAPI() {
 	mux.HandleFunc(pat.Post("/api/v1/hosts"), postDockerHostAPIHandler)
 	mux.HandleFunc(pat.Get("/api/v1/images"), getImagesAPIHandler)
 	mux.HandleFunc(pat.Get("/api/v1/ping"), pingAPIHandler)
+	mux.HandleFunc(pat.Post("/api/v1/keys"), postKeyAPIHandler)
 	mux.HandleFunc(pat.Get("/caslogin"), getCASHandler)
 	mux.HandleFunc(pat.Get("/orchestratorinfo"), getOrchestratorInfoAPIHandler)
 	log.Info("Starting API Mux...")
