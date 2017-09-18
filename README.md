@@ -1,5 +1,7 @@
 # Userspace
 
+_Now with PGP signatures!_
+
 ### What is Userspace?
 Userspace is a project that was envisioned by Manuel Gauto 
 in 2014 during a meeting of George Mason University's Student Run Computing and Technology (http://srct.gmu.edu).
