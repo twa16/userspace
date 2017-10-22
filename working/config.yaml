@@ -1,9 +1,0 @@
-PullStarterImages: true
-SupportsCAS: true
-CASURL: https://login.gmu.edu
-AllowLocalLogin: false
-AllowRegistration: false
-ApiHttpsKey: ./api.key
-ApiHttpsCertificate: ./api.cert
-SessionExpirationSeconds: 1800
-UseLocalDockerHost: true
