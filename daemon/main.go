@@ -17,8 +17,6 @@
 package userspaced
 
 import (
-	"context"
-	"errors"
 	"os"
 	"time"
 
@@ -324,50 +322,4 @@ func GetSpaceArrayAssociation(db *gorm.DB, spaces []Space) ([]Space, error) {
 func GetSpaceAssociation(db *gorm.DB, space Space) (Space, error) {
 	err := db.Model(&space).Related(&space.PortLinks).Error
 	return space, err
-}
-
-func RemoveSpace(db *gorm.DB, space Space) error {
-	//Get Host Docker Connection
-	hostID := space.HostID
-	dockerHost := getHostByID(hostID)
-	//Ensure the host is connected
-	if !dockerHost.IsConnected {
-		log.Critical("Attempted to remove container %s from disconnected host.")
-		return errors.New("Attempted to remove contaienr from disconnected host.")
-	}
-	//Set the space state
-	space.SpaceState = "deleting"
-	db.Save(&space)
-
-	//Only remove the container if the container is not already dead
-	if space.SpaceState != "error" {
-		//Stop the container
-		dClient := dockerHost.DockerClient
-		err := dClient.StopContainer(space.ContainerID, 30)
-		//Catch any errors
-		if err != nil {
-			log.Criticalf("Error stopping container %s: %s", space.ContainerID, err.Error())
-			//return err
-		} else {
-			//Remove the container
-			removeOptions := docker.RemoveContainerOptions{
-				ID:            space.ContainerID,
-				RemoveVolumes: true,
-				Force:         true,
-				Context:       context.Background(),
-			}
-			err = dClient.RemoveContainer(removeOptions)
-			if err != nil {
-				log.Criticalf("Error removing container %s: %s", space.ContainerID, err.Error())
-				//return err
-			}
-		}
-	}
-	//Remove the db object
-	err := db.Delete(&space).Error
-	if err != nil {
-		log.Criticalf("Error removing space record for %d\n", space.ID, err.Error())
-		return err
-	}
-	return nil
 }
