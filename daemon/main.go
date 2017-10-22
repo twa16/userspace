@@ -264,8 +264,9 @@ func updateSpaceStates(db *gorm.DB) {
 			db.Save(space)
 			continue
 		}
-		//Ignore spaces that are just starting
-		if space.SpaceState == "started" {
+		//Ignore spaces that are just starting or being removed
+		if space.SpaceState == "started" ||
+			space.SpaceState == "deleting" {
 			continue
 		}
 		//Get the client from the host
@@ -334,6 +335,10 @@ func RemoveSpace(db *gorm.DB, space Space) error {
 		log.Critical("Attempted to remove container %s from disconnected host.")
 		return errors.New("Attempted to remove contaienr from disconnected host.")
 	}
+	//Set the space state
+	space.SpaceState = "deleting"
+	db.Save(&space)
+
 	//Only remove the container if the container is not already dead
 	if space.SpaceState != "error" {
 		//Stop the container
