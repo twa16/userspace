@@ -17,15 +17,16 @@
 package userspaced
 
 import (
+	"context"
+	"errors"
+	"os"
+	"time"
+
 	"github.com/fsouza/go-dockerclient"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
-	"os"
-	"time"
-	"errors"
-	"context"
 )
 
 //This is where I found the bug with Gogland haha (GO-3377)
@@ -41,7 +42,7 @@ type OrchestratorInfo struct {
 
 //Space Struct that represents the space
 type Space struct {
-	ID            uint            `gorm:"primary_key"`      // Primary Key and ID of container
+	ID            uint            `gorm:"primary_key"`               // Primary Key and ID of container
 	CreatedAt     time.Time       `json:"-"`                         // Creation time
 	ArchiveDate   time.Time       `json:"archive_date,omitempty"`    // This is the timestamp of when the space was archived. This is set if the space was archived.
 	Archived      bool            `json:"archived,omitempty"`        // This value is true if the space was deleted as a result of inactivity. All data is lost but metadata is preserved.
@@ -53,20 +54,20 @@ type Space struct {
 	FriendlyName  string          `json:"space_name,omitempty"`      // Friendly name of this space
 	ContainerID   string          `json:"space_id,omitempty"`        // ID of Docker container running this space
 	SpaceState    string          `json:"space_state,omitempty"`     // Running State of Space (running, paused, archived, error)
-	SSHKeyID      uint            `json: "ssh_key_id,omitempty"`     // ID of the SSH Key that this container is using
-	PortLinks     []SpacePortLink `json: "port_links,omitempty"`     // Shows what external ports are bound to the ports on the space
-	KeepAlive     bool            `json: "keep_alive,omitempty"`     // If true, this container will be started if found to be 'exited'
+	SSHKeyID      uint            `json:"ssh_key_id,omitempty"`      // ID of the SSH Key that this container is using
+	PortLinks     []SpacePortLink `json:"port_links,omitempty"`      // Shows what external ports are bound to the ports on the space
+	KeepAlive     bool            `json:"keep_alive,omitempty"`      // If true, this container will be started if found to be 'exited'
 }
 
 //SpacePortLink A link between container port and host port
 type SpacePortLink struct {
-	ID              uint      `gorm:"primary_key" json:"-"`                              // Primary Key and ID of container
-	CreatedAt       time.Time `json:"-"`                                                 //Timestamp of creation
-	SpacePort       uint16    `json:"space_port"`                                        //Port on the Space
-	ExternalPort    uint16    `json:"external_port" gorm:"unique_index:idx_externaladdress"`    //Port that is exposed on the host
-	ExternalAddress string    `json:"external_address"` // External address that clients would connect to the reach the space
-	DisplayAddress  string    `json:"external_display_address" gorm:"unique_index:idx_externaladdress"`                          //Address that is displayed to clients as the external address
-	SpaceID         uint      `json:"-"`                                                 // ID of the space that this record is associated with
+	ID              uint      `gorm:"primary_key" json:"-"`     // Primary Key and ID of container
+	CreatedAt       time.Time `json:"-"`                        //Timestamp of creation
+	SpacePort       uint16    `json:"space_port"`               //Port on the Space
+	ExternalPort    uint16    `json:"external_port"`            //Port that is exposed on the host
+	ExternalAddress string    `json:"external_address"`         //External address that clients would connect to the reach the space
+	DisplayAddress  string    `json:"external_display_address"` //Address that is displayed to clients as the external address
+	SpaceID         uint      `json:"-"`                        // ID of the space that this record is associated with
 }
 
 // SpaceImage Image that is used to create the underlying container for a space
@@ -169,6 +170,19 @@ func Init() {
 	database.AutoMigrate(&DockerInstance{})
 	database.AutoMigrate(&UserPublicKey{})
 	log.Info("Migration Complete.")
+
+	if viper.GetBool("UseLocalDockerHost") {
+		log.Info("Checking if there are any existing Docker hosts")
+		existingDockerHosts := getAllDockerInstanceConfigurations(db)
+		if len(existingDockerHosts) == 0 {
+			localDocker := DockerInstance{
+				Name:           "Local Host",
+				ConnectionType: "local",
+			}
+			addAndConnectToDockerInstance(db, &localDocker)
+			log.Warning("Added local machine as Docker host!")
+		}
+	}
 
 	//Connect to docker hosts
 	initDockerHosts(database)
