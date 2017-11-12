@@ -21,15 +21,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/spf13/viper"
-	auth "github.com/twa16/go-auth"
-	"goji.io"
-	"goji.io/pat"
 	"net/http"
 	"os"
 	"os/signal"
 	"strings"
 	"time"
+
+	"github.com/spf13/viper"
+	auth "github.com/twa16/go-auth"
+	"goji.io"
+	"goji.io/pat"
 )
 
 const (

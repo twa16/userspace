@@ -28,6 +28,10 @@ WORKDIR /root
 COPY start.sh /root/
 RUN chmod +x /root/start.sh
 
+# Add Comment to authorized_keys to allow sed to work
+RUN mkdir -p /root/.ssh
+RUN echo '# Your Public Keys are added below' > /root/.ssh/authorized_keys
+
 RUN echo "root:Docker!" | chpasswd
 
 ENTRYPOINT ["/root/start.sh"]

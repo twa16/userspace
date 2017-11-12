@@ -24,6 +24,7 @@ import (
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/jinzhu/gorm"
+	"github.com/k0kubun/pp"
 	"github.com/pkg/errors"
 )
 
@@ -184,6 +185,7 @@ func startSpace(db *gorm.DB, space *Space, creationStatusChan chan string) (erro
 
 	//=====Host Config======
 	var hostConfig docker.HostConfig
+
 	//Secure Ports in DB
 	sshPortLink := securePortForSpace(db, space, 22)
 	servicePortLink := securePortForSpace(db, space, 1337)
@@ -214,6 +216,8 @@ func startSpace(db *gorm.DB, space *Space, creationStatusChan chan string) (erro
 	config.HostConfig = &hostConfig
 	config.NetworkingConfig = &networkConfig
 	config.Context = context.Background()
+	config.Name = "userspace_space_" + strconv.Itoa(int(space.ID))
+
 	//Create Container
 	c, err := client.CreateContainer(config)
 	if err != nil {
@@ -239,18 +243,53 @@ func startSpace(db *gorm.DB, space *Space, creationStatusChan chan string) (erro
 		log.Criticalf("Error starting container for space %d: %s\n", space.ID, err.Error())
 		space.SpaceState = "error starting"
 		db.Save(&space)
+		creationStatusChan <- "Error Starting Container"
+		return err, nil
 	} else {
 		log.Infof("Container for Space %d started: %s\n", space.ID, space.ContainerID)
 		space.SpaceState = "running"
 		db.Save(&space)
 	}
+	creationStatusChan <- "Started Container"
+
+	err, keyCount := AddPublicKeysToSpace(db, *space)
+	if err != nil {
+		log.Criticalf("Error adding keys for space %d: %s\n", space.ID, err.Error())
+		space.SpaceState = "error no keys"
+		creationStatusChan <- "Error Adding Keys"
+		db.Save(&space)
+	}
+
+	creationStatusChan <- "Added " + strconv.Itoa(keyCount) + " Keys"
+
 	creationStatusChan <- "Creation Complete"
-	//execInSpace(database, *space, []string{"touch", "/root/testblop"})
+
 	return nil, space
+}
+
+func AddPublicKeysToSpace(db *gorm.DB, space Space) (error, int) {
+	//Get all keys
+	var keys []UserPublicKey
+	err := db.Where(&UserPublicKey{OwnerID: space.OwnerID}).Find(&keys).Error
+	if err != nil {
+		return err, 0
+	}
+	//Ensure .ssh exists in container
+	//execInSpace(database, space, []string{"mkdir", "/root/.ssh"})
+	//Remove existing file if it is there
+	//execInSpace(database, space, []string{"rm", "/root/.ssh/authorized_keys"})
+	//Create authorized_keys file
+	//execInSpace(database, space, []string{"touch", "/root/.ssh/authorized_keys"})
+	//Iterate through keys and add
+	for _, key := range keys {
+		execInSpace(database, space, []string{"sed", "-i", "'$ a " + key.PublicKey + "'", "/root/.ssh/authorized_keys"})
+	}
+	return nil, len(keys)
 }
 
 //execInSpace Executes a command in a space
 func execInSpace(db *gorm.DB, space Space, command []string) error {
+	pp.Println(command)
 	dockerHost := getHostByID(space.HostID)
 
 	execOptions := docker.CreateExecOptions{}
@@ -259,6 +298,7 @@ func execInSpace(db *gorm.DB, space Space, command []string) error {
 	execOptions.AttachStdin = false
 	execOptions.AttachStdout = false
 	execOptions.Tty = false
+	execOptions.Container = space.ContainerID
 	exec, err := dockerHost.DockerClient.CreateExec(execOptions)
 	if err != nil {
 		log.Warningf("Error Executing Command on Host %s: %s\n", dockerHost.Name, err.Error())
